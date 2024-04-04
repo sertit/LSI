@@ -1,0 +1,4 @@
+# compatibility black and isort
+[tool.isort]
+profile = "black"
+known_first_party = ["ci"]

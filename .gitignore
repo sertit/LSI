@@ -1,0 +1,9 @@
+# Generic extension to ignore
+*.py[cod]
+.idea
+*.txt
+!*requirements.txt
+*.aux.xml
+__pycache__/
+ci/new/
+venv

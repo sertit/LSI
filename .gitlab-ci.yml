@@ -1,0 +1,26 @@
+stages:
+  - lint
+  - test
+  - deploy
+
+include:
+  - project: 'sertit/groupware'
+    file: '/ci_templates/arcgis_plugin.yaml'
+
+variables:
+  DOCKER_TLS_CERTDIR: ""
+
+deploy:
+  variables:
+    PROJECT_PATH: $CI_PROJECT_PATH
+    PROJECT_ROOT: "lsi"
+    CENTRAL_REPOSITORY: sertit/arcgis-pro/sertit_atools
+  stage: deploy
+  trigger: $CENTRAL_REPOSITORY
+  rules:
+    # Manual deploy if commit to the default branch
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      when: manual
+    # Manual deploy if commit to another branch
+    - if: $CI_COMMIT_REF_NAME != $CI_DEFAULT_BRANCH
+      when: manual

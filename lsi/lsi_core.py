@@ -214,6 +214,65 @@ def slope_raster(slope_dbf, dem, aoi, output_path):
 
     return slope_tif
 
+def landuse_raster(landuse_dbf, lulc, dem, aoi, output_path):
+    """
+    """
+    proj_crs = aoi.crs
+    lulc = rasters.collocate(dem, lulc, Resampling.nearest)
+
+    # Reclassification of LULC for LSI calculation
+    landcover_reclass = xr.where(lulc == 10, 3, lulc) # Tree cover -> Forest
+    landcover_reclass = xr.where(landcover_reclass == 20, 3, landcover_reclass) # Shrubland -> Forest
+    landcover_reclass = xr.where(landcover_reclass == 30, 2, landcover_reclass) # Grassland -> Grassland
+    landcover_reclass = xr.where(landcover_reclass == 40, 1, landcover_reclass) # Cropland -> Arable land
+    landcover_reclass = xr.where(landcover_reclass == 50, 5, landcover_reclass) # Built-up -> Urban areas
+    landcover_reclass = xr.where(landcover_reclass == 60, 4, landcover_reclass) # Bare/Sparse vegetation -> Bare
+    landcover_reclass = xr.where(landcover_reclass == 70, 997, landcover_reclass) # Snow and ice -> Not applicable
+    landcover_reclass = xr.where(landcover_reclass == 80, 6, landcover_reclass) # Permanent water bodies -> Water areas
+    landcover_reclass = xr.where(landcover_reclass == 90, 997, landcover_reclass) # Herbaceous wetland -> Not applicable
+    landcover_reclass = xr.where(landcover_reclass == 95, 997, landcover_reclass) # Mangroves -> Not applicable
+    landcover_reclass = xr.where(landcover_reclass == 100, 2, landcover_reclass) # Moss and lichen -> Grassland
+    landcover_reclass = landcover_reclass.rio.write_crs(proj_crs, inplace=True)
+
+    landcover_gdf = xr_to_gdf(landcover_reclass, proj_crs, landcover_reclass.name, "Value")
+    lulc_tif = landcover_gdf.merge(landuse_dbf, on="Value")
+    lulc_tif = lulc_tif.set_index(["y", "x"]).Weights.to_xarray()
+    lulc_tif = lulc_tif.rio.write_crs(landcover_reclass.rio.crs)
+    lulc_tif = rasters.crop(lulc_tif, aoi)
+
+    rasters.write(lulc_tif, output_path / "landcover_weight.tif")
+    return lulc_tif
+
+def elevation_raster(elevation_dbf, dem, aoi, output_path):
+    """
+    """
+    proj_crs = aoi.crs
+
+    # Reclassify
+    ELEVATION_STEPS = [0, 500, 600, 700, 800, 9000]
+    ELEVATION_CLASSES = {1: f"{ELEVATION_STEPS[0]} - {ELEVATION_STEPS[1]}", 
+                        2: f"{ELEVATION_STEPS[1]} - {ELEVATION_STEPS[2]}", 
+                        3: f"{ELEVATION_STEPS[2]} - {ELEVATION_STEPS[3]}", 
+                        4: f"{ELEVATION_STEPS[3]} - {ELEVATION_STEPS[4]}", 
+                        5: f"{ELEVATION_STEPS[4]} - {ELEVATION_STEPS[5]}",
+                        6: f"{ELEVATION_STEPS[5]}"
+                        }
+    elevation_name = "Value"
+    elevation_arr = classify_raster(dem, ELEVATION_STEPS, ELEVATION_CLASSES)
+    elevation_d = dem.copy(data=elevation_arr).astype(np.float32).rename(elevation_name)
+    elevation_d.attrs["long_name"] = elevation_name    
+
+    # JOIN with elevation dbf
+    elevation_gdf = xr_to_gdf(elevation_d, proj_crs)
+    elevation_tif = elevation_gdf.merge(elevation_dbf, on="Value")
+    elevation_tif = elevation_tif.set_index(["y", "x"]).Weights.to_xarray()
+    elevation_tif = elevation_tif.rio.write_crs(elevation_d.rio.crs)
+    elevation_tif = rasters.crop(elevation_tif, aoi)
+
+    rasters.write(elevation_tif, output_path / "elevation_weight.tif")
+
+    return elevation_tif 
+
 def hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path):
     """
     Make raster of hydro_weights
@@ -441,9 +500,19 @@ def make_raster_list(input_dict):
         # -- 2. Slope
         slope_dbf = gpd.read_file(slope_dbf_path)
         slope_layer = slope_raster(slope_dbf, dem, aoi, output_path)
+        
         # -- 3. Landcover
+        landuse_dbf = gpd.read_file(landuse_dbf_path)
+        landuse_dbf.loc[len(landuse_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
+        # Landcover
+        lulc_buff = rasters.crop(lulc_path, aoi_b)
+
+        landuse_layer = landuse_raster(landuse_dbf, lulc_buff, dem, aoi_b, output_path)
+        landuse_layer = rasters.crop(landuse_layer, aoi)
+        
         # -- 4. Elevation
-                
+        elevation_dbf = gpd.read_file(elevation_dbf_path)
+        elevation_layer = elevation_raster(elevation_dbf, dem, aoi, output_path)
 
         # -- 5. Hydro
         hydro_dbf = gpd.read_file(hydro_dbf_path)

@@ -178,10 +178,41 @@ def geology_raster(geology_dbf, litho_shp, dem, aoi, output_path):
     geology_tif = litho_gdf.merge(geology_dbf, on="Value")
     geology_tif = geology_tif.set_index(["y", "x"]).Weights.to_xarray()
     geology_tif = geology_tif.rio.write_crs(litho_shp_raster.rio.crs)
+    geology_tif = rasters.crop(geology_tif, aoi)
 
     rasters.write(geology_tif, output_path / "geology_weight.tif")
 
     return geology_tif
+
+def slope_raster(slope_dbf, dem, aoi, output_path):
+    """
+    """
+    proj_crs = aoi.crs
+    slope = rasters.slope(dem, in_rad = False)
+
+    # -- Classify
+    SLOPE_STEPS = [0, 2, 5, 15, 35, 90]
+    SLOPE_CLASSES = {1: f"{SLOPE_STEPS[0]} - {SLOPE_STEPS[1]}", 
+                    2: f"{SLOPE_STEPS[1]} - {SLOPE_STEPS[2]}", 
+                    3: f"{SLOPE_STEPS[2]} - {SLOPE_STEPS[3]}", 
+                    4: f"{SLOPE_STEPS[3]} - {SLOPE_STEPS[4]}", 
+                    5: f"{SLOPE_STEPS[4]} - {SLOPE_STEPS[5]}",
+                    6: f"{SLOPE_STEPS[5]}"
+                    }
+    slope_name = "Value"
+    slope_arr = classify_raster(slope, SLOPE_STEPS, SLOPE_CLASSES)
+    slope_d = slope.copy(data=slope_arr).astype(np.float32).rename(slope_name)
+    slope_d.attrs["long_name"] = slope_name
+
+    slope_gdf = xr_to_gdf(slope_d, proj_crs)
+    slope_tif = slope_gdf.merge(slope_dbf, on="Value")
+    slope_tif = slope_tif.set_index(["y", "x"]).Weights.to_xarray()
+    slope_tif = slope_tif.rio.write_crs(slope_d.rio.crs)
+    slope_tif = rasters.crop(slope_tif, aoi)
+
+    rasters.write(slope_tif, output_path / "slope_weight.tif")
+
+    return slope_tif
 
 def hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path):
     """
@@ -369,13 +400,13 @@ def make_raster_list(input_dict):
     raster_dict = {}
 
     # Define Weights dbfs paths:
-    geology_dbf = os.path.join(weights_path, "Geology.dbf")
-    slope_dbf = os.path.join(weights_path, "Slope.dbf")
-    elevation_dbf = os.path.join(weights_path, "Elevation.dbf")
-    aspect_dbf = os.path.join(weights_path, "Aspect.dbf")
-    landuse_dbf = os.path.join(weights_path, "Land use.dbf")
+    geology_dbf_path = os.path.join(weights_path, "Geology.dbf")
+    slope_dbf_path = os.path.join(weights_path, "Slope.dbf")
+    elevation_dbf_path = os.path.join(weights_path, "Elevation.dbf")
+    aspect_dbf_path = os.path.join(weights_path, "Aspect.dbf")
+    landuse_dbf_path = os.path.join(weights_path, "Land use.dbf")
     hydro_dbf_path = os.path.join(weights_path, "Hydro.dbf")
-    final_weights_dbf = os.path.join(weights_path, "Final_weights.dbf")
+    final_weights_dbf_path = os.path.join(weights_path, "Final_weights.dbf")
 
     # Define folder for temporal files
     tmp_dir = os.path.join(output_path, "temp_dir")
@@ -401,13 +432,15 @@ def make_raster_list(input_dict):
                          window = aoi)
         litho_shp = gpd.clip(litho_shp, aoi)
 
-        geology_dbf = gpd.read_file(hydro_dbf_path)
+        geology_dbf = gpd.read_file(geology_dbf_path)
         # momentaneous line to add Not Applicable class
         geology_dbf.loc[len(geology_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
 
         geology_layer = geology_raster(geology_dbf, litho_shp, dem, aoi, output_path)
 
         # -- 2. Slope
+        slope_dbf = gpd.read_file(slope_dbf_path)
+        slope_layer = slope_raster(slope_dbf, dem, aoi, output_path)
         # -- 3. Landcover
         # -- 4. Elevation
                 

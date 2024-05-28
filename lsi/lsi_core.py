@@ -155,7 +155,33 @@ def check_parameters(input_dict: dir) -> None:
     # Check if other_dem_path is needed
     if (dem_name == DemType.OTHER.value) and (other_dem_path is None):
         raise ValueError(f"Dem path is needed !")
-    return
+    return  
+
+def geology_raster(geology_dbf, litho_shp, dem, aoi, output_path):
+    """
+    
+    """
+    proj_crs = aoi.crs
+    litho_raster = rasters.rasterize( path_or_ds = dem
+                                    , vector = litho_shp
+                                    , value_field = "Rating"
+                                    )
+    litho_shp_raster = litho_shp_raster.fillna(997)
+    litho_shp_raster = rasters.crop(litho_shp_raster, aoi)
+
+    litho_gdf = xr_to_gdf(litho_shp_raster
+                      , proj_crs
+                      , column_name = litho_shp_raster.name
+                      , column_rename = "Value")
+    
+    # -- JOIN with Geology_dbf
+    geology_tif = litho_gdf.merge(geology_dbf, on="Value")
+    geology_tif = geology_tif.set_index(["y", "x"]).Weights.to_xarray()
+    geology_tif = geology_tif.rio.write_crs(litho_shp_raster.rio.crs)
+
+    rasters.write(geology_tif, output_path / "geology_weight.tif")
+
+    return geology_tif
 
 def hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path):
     """
@@ -348,7 +374,7 @@ def make_raster_list(input_dict):
     elevation_dbf = os.path.join(weights_path, "Elevation.dbf")
     aspect_dbf = os.path.join(weights_path, "Aspect.dbf")
     landuse_dbf = os.path.join(weights_path, "Land use.dbf")
-    hydro_dbf = os.path.join(weights_path, "Hydro.dbf")
+    hydro_dbf_path = os.path.join(weights_path, "Hydro.dbf")
     final_weights_dbf = os.path.join(weights_path, "Final_weights.dbf")
 
     # Define folder for temporal files
@@ -367,26 +393,34 @@ def make_raster_list(input_dict):
         #0. DEM
         aoi_b = geometry.buffer(aoi, 0.1) # buffer (for LandUse + Hydro rasters)
         dem_buff = rasters.crop(dem_path, aoi_b)
+        dem = rasters.crop(dem_buff, aoi)
 
-
-        #1. Geology
-        # - read vector
+        # -- 1. Geology
         litho_shp = vectors.read(vector_path = lithology_path,
                          crs = proj_crs,
                          window = aoi)
         litho_shp = gpd.clip(litho_shp, aoi)
 
-        litho_raster = rasters.rasterize(  
-                                          path_or_ds = dem
-                                        , vector = litho_shp
-                                        , value_field = "Rating"
-                                        )
+        geology_dbf = gpd.read_file(hydro_dbf_path)
+        # momentaneous line to add Not Applicable class
+        geology_dbf.loc[len(geology_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
 
+        geology_layer = geology_raster(geology_dbf, litho_shp, dem, aoi, output_path)
+
+        # -- 2. Slope
+        # -- 3. Landcover
+        # -- 4. Elevation
+                
+
+        # -- 5. Hydro
+        hydro_dbf = gpd.read_file(hydro_dbf_path)
+        hydro_layer = hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path)
+
+        # -- 6. Aspect 
+        
+        # Final
         raster_dict = {
         }
-
-      #5. Hydro
-        hydro_layer = hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path)
 
 def lsi_core(input_dict: dict) -> str:
     """

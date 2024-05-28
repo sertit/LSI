@@ -2,12 +2,15 @@
 import argparse
 import logging
 import sys
+try:
+    import rich_click as click
+except:
+    import click
 
-import click
 
 # from lsi import LOGGER_NAME # on the meantime to solve the acces to lsi.py
 # from lsi.lsi_core import lsi_core # on the meantime to solve the acces to lsi.py
-from lsi_core import LOGGER, LOGGING_FORMAT, DataPath, InputParameters, lsi_core
+from lsi.lsi_core import LOGGER, LOGGING_FORMAT, DataPath, InputParameters, lsi_core
 from sertit import logs
 from sertit.files import to_abspath
 from sertit.logs import LOGGING_FORMAT
@@ -22,6 +25,7 @@ from sertit.unistra import unistra_s3
     "-aoi",
     "--aoi_path",
     help="Path to the AOI (shp, geojson) or WKT string",
+    type=click.Path(exists=True, resolve_path=True),
     required=True,
 )
 @click.option(
@@ -30,12 +34,25 @@ from sertit.unistra import unistra_s3
     help="Location of the AOI",
     type=click.Choice(["Europe", "Global"]),  # to be added maybe Europe/Global_Legacy
     required=True,
+)
+@click.option(
+    "-dem",
+    "--dem_name",
+    help="DEM Name needed",
+    type=click.Choice(["COPDEM 30m", "FABDEM", "SRTM 30m", "Other"]), #"EUDEM 25m" ,  "MERIT 5 deg"
+    default="COPDEM 30m",
     show_default=True,
+)
+@click.option(
+    "-demp",
+    "--other_dem_path",
+    help="DEM path if dem = Other",
+    type=click.Path(exists=True, resolve_path=True),
 )
 @click.option(
     "-litho",
     "--lithology_path",
-    help="Geodatabases of lithologies.",
+    help="GDB of lithologies.",
     type=click.Path(exists=True, resolve_path=True),
 )
 @click.option(
@@ -44,7 +61,7 @@ from sertit.unistra import unistra_s3
     help="Land Cover Name",
     type=click.Choice(
         [
-            "ESA Worldcover - 2021 (10m)"
+            "ESA WorldCover - 2021 (10m)"
             # "Corine Land Cover - 2018 (100m)",
             # "Global Land Cover - Copernicus 2019 (100m)",
             # "P03",
@@ -54,9 +71,9 @@ from sertit.unistra import unistra_s3
     show_default=True,
 )
 @click.option(
-    "-final_weights",
-    "--final_weights_path",
-    help="Geotadabase with the final weights for the LSI computation.",
+    "-weights",
+    "--weights_path",
+    help="Geotadabase with the weights for the LSI computation.",
     type=click.Path(exists=True, resolve_path=True),
 )
 @click.option(
@@ -67,8 +84,8 @@ from sertit.unistra import unistra_s3
     show_default=True,
 )
 @click.option(
-    "-o",
-    "--output",
+    "-out",
+    "--output_path",
     help="Output directory. ",
     type=click.Path(file_okay=False, resolve_path=True, writable=True),
     required=True,
@@ -78,12 +95,16 @@ from sertit.unistra import unistra_s3
     help="Set this flag if the command line is run on the ftep platform. ",
     default=False,
 )
-def main(
+
+
+def compute_lsi(
     aoi_path,
     location,
+    dem_name,
+    other_dem_path,
     lithology_path,
     landcover_name,
-    final_weights_path,
+    weights_path,
     epsg_code,
     output_path,
     ftep,
@@ -96,90 +117,29 @@ def main(
         input_dict = {
             InputParameters.AOI_PATH.value: aoi_path,
             InputParameters.LOCATION.value: location,
+            InputParameters.DEM_NAME.value: dem_name,
+            InputParameters.OTHER_DEM_PATH.value: other_dem_path,
             InputParameters.LITHOLOGY_PATH.value: lithology_path,
             InputParameters.LANDCOVER_NAME.value: landcover_name,
-            InputParameters.FINAL_WEIGHTS_PATH.value: final_weights_path,
+            InputParameters.WEIGHTS_PATH.value: weights_path,
             InputParameters.REF_EPSG.value: epsg_code,
             InputParameters.OUTPUT_DIR.value: output_path,
         }
         DataPath.load_paths(ftep)
 
     try:
-        lsi()
+        lsi_core(input_dict)
         LOGGER.info("lsi was a success.")
         sys.exit(0)
 
         print("success")
 
     # pylint: disable=W0703
-    except Exception:
+    except Exception as ex:
         LOGGER.error("lsi has failed:", exc_info=True)
-        sys.exit(1)
         print("not sucess")
-
-
-# def lsi():
-#    """rrm_csv_coordinates with the command line"""
-#    parser = argparse.ArgumentParser()
-
-# parser.add_argument(
-#     "-a",
-#     "--aoi",
-#     help="AOI path as shapefile.",
-#     type=to_abspath,
-#     required=True,
-# )
-
-#     parser.add_argument(
-#     "-loc",
-#     "--location",
-#     help="Location",
-#     choices=["Global"],
-#     type=str,
-#     required=True,
-# ),
-
-# parser.add_argument(
-#     "-dem", "--dem", help="Please specify a DEM (30m).", required=True, type=to_abspath,
-# )
-
-# parser.add_argument(
-#     "-odem", "--other_dem", help="Provide any other DEM", required=False, type=to_abspath,
-# )
-
-# parser.add_argument(
-#     "-lc", "--landcover", help="Please specify a Landcover.", required=True, type=to_abspath,
-# )
-
-# parser.add_argument(
-#     "-litho", "--litho_db", help="Lithology and permeability geodatabase.", required=True, type=to_abspath,
-# )
-
-# parser.add_argument(
-#     "-field", "--field_geology", help="=Field geology to be used.", required=True
-#     , type=str, choices=["Rating"]
-# )
-
-# parser.add_argument(
-#     "-geom", "--geomor_db", help="=Database with Aspect, Elevation, Final weights, Geology, Hydrology, Land use and Slope data.", required=True
-# )
-
-# parser.add_argument(
-#     "-epsg", "--epsg_code", help="EPSG code", type=int, required=True
-# )
-
-# parser.add_argument(
-#     "-out", "--output", help="=Output directory.", required=True, type=to_abspath,
-# )
-
-# Parse args
-#   args = parser.parse_args()  # noqa
-
-
-# Process
-# (Here to place the main function with all the LSI process from lsi_core.py)
-#   lsi_core()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    main()
+    compute_lsi()

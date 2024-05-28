@@ -3,17 +3,16 @@
 # To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-nd/4.0/
 """ Utils """
 
-from typing import Any, Callable, Optional, Union
+from typing import Optional, Union # , Any, Callable
 
 import geopandas as gpd
 import numpy as np
 import rasterio
 import xarray as xr
-from matplotlib import pyplot as plt
-from sertit import AnyPath, geometry, rasters, rasters_rio, unistra, vectors
-from sertit.types import AnyPathStrType, AnyPathType
+#from sertit import AnyPath, geometry, rasters, rasters_rio, unistra, vectors
+from sertit.types import AnyPathType # ,AnyPathStrType
 from whitebox import WhiteboxTools
-
+from enum import Enum #, unique
 
 def classify_raster(raster, raster_steps, raster_classes):
     """ """
@@ -60,7 +59,7 @@ def aspect(ds: PATH_ARR_DS) -> (np.ma.masked_array, dict):
     # Squeeze if needed
     expand = False
     if len(array.shape) == 3 and array.shape[0] == 1:
-        array = np.squeeze(array)  # Use this trick to make the sieve work
+        array = np.squeeze(array)
         expand = True
     # Compute slope and aspect
     dx, dy = np.gradient(array, *array.rio.resolution())
@@ -69,13 +68,14 @@ def aspect(ds: PATH_ARR_DS) -> (np.ma.masked_array, dict):
     return aspect
 
 
-def np_to_xr(raster, reference_raster, crs):
+def np_to_xr(raster, reference_raster, crs, band_name ="Value"):
     if len(raster.shape) == 2:
         raster = np.broadcast_to(raster, (1, raster.shape[0], raster.shape[1]))
-        print(raster.shape)
-    raster = xr.DataArray(raster, coords=reference_raster.coords, name="Value")
-    raster = raster.rio.write_crs(crs, inplace=True)
-    return raster.rio.set_spatial_dims(x_dim="x", y_dim="y")
+        #print(raster.shape)
+    raster = xr.DataArray(raster, coords = reference_raster.coords, name=band_name)
+    raster = raster.rio.set_spatial_dims(x_dim = "x", y_dim = "y")
+#    raster = raster.rio.write_crs(crs, inplace=True)
+    return raster
 
 
 def initialize_whitebox_tools(
@@ -93,10 +93,6 @@ def initialize_whitebox_tools(
         wbt.set_whitebox_dir = str(whitebox_tools_path)
 
     return wbt
-
-
-from enum import Enum, unique
-
 
 class RoutingAlgorithm(Enum):
     D8 = "d8"
@@ -136,7 +132,6 @@ def compute_flow_accumulation(
     wbt_instance: WhiteboxTools,
     routing: RoutingAlgorithm = RoutingAlgorithm.D8,
     pointer: bool = False,
-    apply_ln: bool = False,
 ) -> None:
     # Select routing algorithm
     if routing == RoutingAlgorithm.D8:
@@ -155,5 +150,4 @@ def compute_flow_accumulation(
         str(output_path),
         out_type="cells",
         pntr=pointer,
-        # log=apply_ln
     )

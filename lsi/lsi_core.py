@@ -19,7 +19,7 @@ import geopandas as gpd
 
 from scipy.ndimage import distance_transform_edt
 
-from src.utils import (initialize_whitebox_tools, compute_flow_accumulation
+from lsi.utils import (initialize_whitebox_tools, compute_flow_accumulation
                        , RoutingAlgorithm, np_to_xr, xr_to_gdf, classify_raster,
                        aspect)
 
@@ -44,7 +44,6 @@ def geodatastore(ftep=False):
         return AnyPath("s3://eo4sdg-data") #TODO
     else:
         return get_geodatastore()
-
 
 class DataPath:
     GLOBAL_DIR = None
@@ -72,8 +71,6 @@ class DataPath:
         )
         cls.FABDEM_PATH = cls.GLOBAL_DIR / "FABDEM" / "FABDEM.vrt"
         
-
-
 @unique
 class InputParameters(ListEnum):
     """
@@ -99,7 +96,6 @@ class LandcoverType(ListEnum):
 
     CLC = "Corine Land Cover - 2018 (100m)"
     ESAWC = "ESA WorldCover - 2021 (10m)"
-
 
 @unique
 class LocationType(ListEnum):
@@ -162,6 +158,10 @@ def geology_raster(geology_dbf, litho_shp, dem, aoi, output_path):
     """
     
     """
+    LOGGER.info(
+        "-- Produce the Geology/Lithology raster for the LSI model"
+    )
+
     proj_crs = aoi.crs
     litho_raster = rasters.rasterize( path_or_ds = dem
                                     , vector = litho_shp
@@ -188,6 +188,10 @@ def geology_raster(geology_dbf, litho_shp, dem, aoi, output_path):
 def slope_raster(slope_dbf, dem, aoi, output_path):
     """
     """
+
+    LOGGER.info(
+        "-- Produce the Slope raster for the LSI model"
+    )
     proj_crs = aoi.crs
     slope = rasters.slope(dem, in_rad = False)
 
@@ -218,6 +222,11 @@ def slope_raster(slope_dbf, dem, aoi, output_path):
 def landuse_raster(landuse_dbf, lulc, dem, aoi, output_path):
     """
     """
+    LOGGER.info(
+        "-- Produce the Land use raster for the LSI model"
+    )
+
+
     proj_crs = aoi.crs
     lulc = rasters.collocate(dem, lulc, Resampling.nearest)
 
@@ -247,6 +256,11 @@ def landuse_raster(landuse_dbf, lulc, dem, aoi, output_path):
 def elevation_raster(elevation_dbf, dem, aoi, output_path):
     """
     """
+    LOGGER.info(
+        "-- Produce the Elevation raster for the LSI model"
+    )
+
+
     proj_crs = aoi.crs
 
     # Reclassify
@@ -278,6 +292,11 @@ def hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path):
     """
     Make raster of hydro_weights
     """
+
+    LOGGER.info(
+        "-- Produce the Distance to Hydro raster for the LSI model"
+    )
+
     # -- Pre-process DEM
         ## Prepare DEM
     proj_crs = aoi.crs
@@ -394,6 +413,11 @@ def hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path):
 def aspect_raster(aspect_dbf, dem, aoi, output_path):
     """
     """
+
+    LOGGER.info(
+        "-- Produce the Aspect raster for the LSI model"
+    )
+
     proj_crs = aoi.crs
 
     aspect_tif = aspect(dem, proj_crs)
@@ -444,7 +468,7 @@ def aspect_raster(aspect_dbf, dem, aoi, output_path):
     return aspect_tif
 
 
-def lsi_compute(input_dict):
+def lsi_core(input_dict: dict) -> None:
     """
     Make a dict with the rasters:
         1. Geology
@@ -477,14 +501,27 @@ def lsi_compute(input_dict):
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir)
 
-    # -- Dict that store landcover name and landcover path
-    landcover_path_dict = {
-        LandcoverType.CLC.value: DataPath.CLC_PATH,
-        LandcoverType.ESAWC.value: DataPath.ESAWC_PATH,
-    }
 
-    # Store landcover path in a variable
-    lulc_path = landcover_path_dict[landcover_name]
+
+    # Store landcover path in a variable depending on LOCATION
+        # -- Check location (EUROPE or OUTSIDE of Europe)
+    if location == LocationType.EUROPE.value:
+            # -- Dict that store landcover name and landcover path
+        landcover_path_dict = {
+            LandcoverType.CLC.value: DataPath.CLC_PATH,
+            LandcoverType.ESAWC.value: DataPath.ESAWC_PATH,
+        }
+
+        lulc_path = landcover_path_dict[landcover_name]
+
+    if location == LocationType.GLOBAL.value:
+            # -- Dict that store landcover name and landcover path
+        landcover_path_dict = {
+            LandcoverType.ESAWC.value: DataPath.ESAWC_PATH,
+        }
+
+        lulc_path = landcover_path_dict[landcover_name]
+
 
     # -- Dict that store dem name and dem path
     dem_path_dict = {DemType.COPDEM_30.value: DataPath.COPDEM30_PATH,
@@ -514,110 +551,87 @@ def lsi_compute(input_dict):
     tmp_dir = os.path.join(output_path, "temp_dir")
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir)
- 
-
-    # -- Check location (EUROPE or OUTSIDE of Europe)
-    if location == LocationType.EUROPE.value:
-        print("do european stuff")
-
-    if location == LocationType.GLOBAL.value:
-        print("do gLoBaL CitIZeN stuff")
-
-        #0. DEM
-        aoi_b = geometry.buffer(aoi, 0.1) # buffer (for LandUse + Hydro rasters)
-        dem_buff = rasters.crop(dem_path, aoi_b)
-        dem = rasters.crop(dem_buff, aoi)
-
-        # -- 1. Geology
-        litho_shp = vectors.read(vector_path = lithology_path,
-                         crs = proj_crs,
-                         window = aoi)
-        litho_shp = gpd.clip(litho_shp, aoi)
-
-        geology_dbf = gpd.read_file(geology_dbf_path)
-        # momentaneous line to add Not Applicable class
-        geology_dbf.loc[len(geology_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
-
-        geology_layer = geology_raster(geology_dbf, litho_shp, dem, aoi, output_path)
-
-        # -- 2. Slope
-        slope_dbf = gpd.read_file(slope_dbf_path)
-        slope_layer = slope_raster(slope_dbf, dem, aoi, output_path)
-        
-        # -- 3. Landcover
-        landuse_dbf = gpd.read_file(landuse_dbf_path)
-        landuse_dbf.loc[len(landuse_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
-        # Landcover
-        lulc_buff = rasters.crop(lulc_path, aoi_b)
-
-        landuse_layer = landuse_raster(landuse_dbf, lulc_buff, dem, aoi_b, output_path)
-        
-        # -- 4. Elevation
-        elevation_dbf = gpd.read_file(elevation_dbf_path)
-        elevation_layer = elevation_raster(elevation_dbf, dem, aoi, output_path)
-
-        # -- 5. Hydro
-        hydro_dbf = gpd.read_file(hydro_dbf_path)
-        hydro_layer = hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path)
-
-        # -- 6. Aspect 
-        aspect_dbf = gpd.read_file(aspect_dbf_path)
-        
-        aspect_layer = aspect_raster(aspect_dbf, dem, aoi, output_path)
 
 
-        # -- Final weights computing
-        fw_dbf = gpd.read_file(final_weights_dbf_path)
+    #0. DEM
+    aoi_b = geometry.buffer(aoi, 0.1) # buffer (for LandUse + Hydro rasters)
+    dem_buff = rasters.crop(dem_path, aoi_b)
+    dem = rasters.crop(dem_buff, aoi)
 
-        # Extracting final weights
-        slope_weights = fw_dbf[fw_dbf.Factors == "Slope"].Weights.iloc[0]
-        geology_weights = fw_dbf[fw_dbf.Factors == "Geology"].Weights.iloc[0]
-        aspect_weights = fw_dbf[fw_dbf.Factors == "Slope aspect"].Weights.iloc[0]
-        elevation_weights = fw_dbf[fw_dbf.Factors == "Elevation"].Weights.iloc[0]
-        hydro_weights = fw_dbf[fw_dbf.Factors == "Distance from river"].Weights.iloc[0]
-        landuse_weights = fw_dbf[fw_dbf.Factors == "Land use"].Weights.iloc[0]
+    # -- 1. Geology
+    # Reading geology database, clip to aoi and reproject to proj_crs
+    litho_db = gpd.read_file(lithology_path, driver='FileGDB', mask = aoi)
+    aoi_db = aoi.to_crs(litho_db.crs)
+    litho_shp = gpd.clip(litho_db, aoi_db)
+    litho_shp = litho_shp.to_crs(proj_crs)
 
-        # Final weight
+    geology_dbf = gpd.read_file(geology_dbf_path)
+    # momentaneous line to add Not Applicable class
+    geology_dbf.loc[len(geology_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
 
-        lsi_tif = (slope_layer*float(slope_weights) 
-                + geology_layer*float(geology_weights) 
-                + elevation_layer*float(elevation_weights) 
-                + aspect_layer*float(aspect_weights)
-                + landuse_layer*float(landuse_weights)
-                + hydro_layer*float(hydro_weights)
-                )
-        
-        # Write in memory
-        rasters.write(lsi_tif, output_path / "lsi.tif")
+    geology_layer = geology_raster(geology_dbf, litho_shp, dem, aoi, output_path)
 
-def lsi_core(input_dict: dict) -> str:
-    """
-    TODO: Complete arguments and dosctring
-    """
+    # -- 2. Slope
+    slope_dbf = gpd.read_file(slope_dbf_path)
+    slope_layer = slope_raster(slope_dbf, dem, aoi, output_path)
+    
+    # -- 3. Landcover
+    landuse_dbf = gpd.read_file(landuse_dbf_path)
+    landuse_dbf.loc[len(landuse_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
+    # Landcover
+    lulc_buff = rasters.crop(lulc_path, aoi_b)
 
-    # 0. Prepare Rasters and Database files of Weights
-    make_raster_list(input_dict)
+    landuse_layer = landuse_raster(landuse_dbf, lulc_buff, dem, aoi_b, output_path)
+    
+    # -- 4. Elevation
+    elevation_dbf = gpd.read_file(elevation_dbf_path)
+    elevation_layer = elevation_raster(elevation_dbf, dem, aoi, output_path)
 
+    # -- 5. Hydro
+    hydro_dbf = gpd.read_file(hydro_dbf_path)
+    hydro_layer = hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path)
 
-    # 1. GEOLOGY
-
-    # 2. SLOPE (DEGREES)
-
-    # 3. LANDCOVER
-
-    # 4. ELEVATION
-
-    # 5. DISTANCE TO HYDRO
-
-    # 6. ASPECT
-
-    # 7. FINAL WEIGTHS
-
-    # 8. LSI RASTER CALCULATION
+    # -- 6. Aspect 
+    aspect_dbf = gpd.read_file(aspect_dbf_path)
+    
+    aspect_layer = aspect_raster(aspect_dbf, dem, aoi, output_path)
 
 
+    # -- Final weights computing
+    fw_dbf = gpd.read_file(final_weights_dbf_path)
 
+    # Extracting final weights
+    slope_weights = fw_dbf[fw_dbf.Factors == "Slope"].Weights.iloc[0]
+    geology_weights = fw_dbf[fw_dbf.Factors == "Geology"].Weights.iloc[0]
+    aspect_weights = fw_dbf[fw_dbf.Factors == "Slope aspect"].Weights.iloc[0]
+    elevation_weights = fw_dbf[fw_dbf.Factors == "Elevation"].Weights.iloc[0]
+    hydro_weights = fw_dbf[fw_dbf.Factors == "Distance from river"].Weights.iloc[0]
+    landuse_weights = fw_dbf[fw_dbf.Factors == "Land use"].Weights.iloc[0]
 
+    # Final weight
+
+    lsi_tif = (slope_layer*float(slope_weights) 
+            + geology_layer*float(geology_weights) 
+            + elevation_layer*float(elevation_weights) 
+            + aspect_layer*float(aspect_weights)
+            + landuse_layer*float(landuse_weights)
+            + hydro_layer*float(hydro_weights)
+            )
+    
+    # Write in memory
+    rasters.write(lsi_tif, output_path / "lsi.tif")
 
     return
     # raise NotImplementedError
+
+
+# def lsi_core(input_dict: dict) -> str:
+#     """
+#     TODO: Complete arguments and dosctring
+#     """
+
+#     # 0. Prepare Rasters and Database files of Weights
+#     lsi_compute(input_dict)
+
+#     return
+#     # raise NotImplementedError

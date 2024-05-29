@@ -20,7 +20,8 @@ import geopandas as gpd
 from scipy.ndimage import distance_transform_edt
 
 from src.utils import (initialize_whitebox_tools, compute_flow_accumulation
-                       , RoutingAlgorithm, np_to_xr, xr_to_gdf, classify_raster)
+                       , RoutingAlgorithm, np_to_xr, xr_to_gdf, classify_raster,
+                       aspect)
 
 # from lsi import LOGGER_NAME # on the meantime to solve the acces to lsi.py
 
@@ -390,7 +391,60 @@ def hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path):
     rasters.write(hydro_tif,  output_path / "hydro_weight.tif")
     return hydro_tif
 
-def make_raster_list(input_dict):
+def aspect_raster(aspect_dbf, dem, aoi, output_path):
+    """
+    """
+    proj_crs = aoi.crs
+
+    aspect_tif = aspect(dem, proj_crs)
+
+    aspect_tif_deg = np.round(aspect_tif * (180/np.pi)) + 180
+
+    # Taking the maximum Azimuth as the Flat (360 -> -1) for classification purposes
+    aspect_tif_deg = xr.where(aspect_tif_deg == aspect_tif_deg.max(), -1, aspect_tif_deg)
+
+    # -- Classify from degrees [0, 359] Flat/North/Northeast/etc...
+    ASPECT_STEPS = [-1, 0, 22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5]
+    ASPECT_CLASSES = {   1: f"{ASPECT_STEPS[0]} - {ASPECT_STEPS[1]}", # Flat
+                        2: f"{ASPECT_STEPS[1]} - {ASPECT_STEPS[2]}", # North
+                        3: f"{ASPECT_STEPS[2]} - {ASPECT_STEPS[3]}", # Northeast
+                        4: f"{ASPECT_STEPS[3]} - {ASPECT_STEPS[4]}", # East
+                        5: f"{ASPECT_STEPS[4]} - {ASPECT_STEPS[5]}", # Southeast
+                        6: f"{ASPECT_STEPS[5]} - {ASPECT_STEPS[6]}", # South
+                        7: f"{ASPECT_STEPS[6]} - {ASPECT_STEPS[7]}", # Southwest
+                        8: f"{ASPECT_STEPS[7]} - {ASPECT_STEPS[8]}", # West
+                        9: f"{ASPECT_STEPS[8]} - {ASPECT_STEPS[9]}", # Northwest
+                        10: f"{ASPECT_STEPS[9]}" # North
+                        }
+    aspect_class = classify_raster(aspect_tif_deg, ASPECT_STEPS, ASPECT_CLASSES)
+
+    # -- Classify following the aspect classes from dbf
+    # the following codes are not considered = {1: Flat, 2: North, 3: Northeast, 4: East}
+    # as they already are within the class defined in Aspect_dbf
+
+    # Transform to Aspect_dbf scale
+    aspect_reclass = xr.where(aspect_class == 5, 4, aspect_class) # Southeast
+    aspect_reclass = xr.where(aspect_reclass == 6, 5, aspect_reclass) # South
+    aspect_reclass = xr.where(aspect_reclass == 7, 5, aspect_reclass) # Southwest
+    aspect_reclass = xr.where(aspect_reclass == 8, 3, aspect_reclass) # West
+    aspect_reclass = xr.where(aspect_reclass == 9, 3, aspect_reclass) # Northeast
+    aspect_reclass = xr.where(aspect_reclass == 10, 2, aspect_reclass) # North
+
+    aspect_reclass_xr = np_to_xr(aspect_reclass, dem, proj_crs)
+    aspect_gdf = xr_to_gdf(aspect_reclass_xr, proj_crs)
+
+    # JOIN with aspect_dbf
+    aspect_tif = aspect_gdf.merge(aspect_dbf, on="Value")
+    aspect_tif = aspect_tif.set_index(["y", "x"]).Weights.to_xarray()
+    aspect_tif = aspect_tif.rio.write_crs(aspect_reclass_xr.rio.crs)
+    aspect_tif = rasters.crop(aspect_tif, aoi)
+
+    rasters.write(aspect_tif, output_path / "aspect_weight.tif")
+
+    return aspect_tif
+
+
+def lsi_compute(input_dict):
     """
     Make a dict with the rasters:
         1. Geology
@@ -429,16 +483,7 @@ def make_raster_list(input_dict):
         LandcoverType.ESAWC.value: DataPath.ESAWC_PATH,
     }
 
-    # -- Store landcover path in a variable
-    lulc_path = landcover_path_dict[landcover_name]
-
-    # -- Dict that store landcover name and landcover path
-    landcover_path_dict = {
-        LandcoverType.CLC.value: DataPath.CLC_PATH,
-        LandcoverType.ESAWC.value: DataPath.ESAWC_PATH,
-    }
-
-    # -- Store landcover path in a variable
+    # Store landcover path in a variable
     lulc_path = landcover_path_dict[landcover_name]
 
     # -- Dict that store dem name and dem path
@@ -456,9 +501,7 @@ def make_raster_list(input_dict):
     else:
         proj_crs = aoi.crs
 
-    raster_dict = {}
-
-    # Define Weights dbfs paths:
+    # -- Define Weights dbfs paths:
     geology_dbf_path = os.path.join(weights_path, "Geology.dbf")
     slope_dbf_path = os.path.join(weights_path, "Slope.dbf")
     elevation_dbf_path = os.path.join(weights_path, "Elevation.dbf")
@@ -508,7 +551,6 @@ def make_raster_list(input_dict):
         lulc_buff = rasters.crop(lulc_path, aoi_b)
 
         landuse_layer = landuse_raster(landuse_dbf, lulc_buff, dem, aoi_b, output_path)
-        landuse_layer = rasters.crop(landuse_layer, aoi)
         
         # -- 4. Elevation
         elevation_dbf = gpd.read_file(elevation_dbf_path)
@@ -519,10 +561,34 @@ def make_raster_list(input_dict):
         hydro_layer = hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path)
 
         # -- 6. Aspect 
+        aspect_dbf = gpd.read_file(aspect_dbf_path)
         
-        # Final
-        raster_dict = {
-        }
+        aspect_layer = aspect_raster(aspect_dbf, dem, aoi, output_path)
+
+
+        # -- Final weights computing
+        fw_dbf = gpd.read_file(final_weights_dbf_path)
+
+        # Extracting final weights
+        slope_weights = fw_dbf[fw_dbf.Factors == "Slope"].Weights.iloc[0]
+        geology_weights = fw_dbf[fw_dbf.Factors == "Geology"].Weights.iloc[0]
+        aspect_weights = fw_dbf[fw_dbf.Factors == "Slope aspect"].Weights.iloc[0]
+        elevation_weights = fw_dbf[fw_dbf.Factors == "Elevation"].Weights.iloc[0]
+        hydro_weights = fw_dbf[fw_dbf.Factors == "Distance from river"].Weights.iloc[0]
+        landuse_weights = fw_dbf[fw_dbf.Factors == "Land use"].Weights.iloc[0]
+
+        # Final weight
+
+        lsi_tif = (slope_layer*float(slope_weights) 
+                + geology_layer*float(geology_weights) 
+                + elevation_layer*float(elevation_weights) 
+                + aspect_layer*float(aspect_weights)
+                + landuse_layer*float(landuse_weights)
+                + hydro_layer*float(hydro_weights)
+                )
+        
+        # Write in memory
+        rasters.write(lsi_tif, output_path / "lsi.tif")
 
 def lsi_core(input_dict: dict) -> str:
     """

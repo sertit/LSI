@@ -10,9 +10,11 @@ import numpy as np
 import rasterio
 import xarray as xr
 #from sertit import AnyPath, geometry, rasters, rasters_rio, unistra, vectors
+from sertit import rasters
 from sertit.types import AnyPathType # ,AnyPathStrType
 from whitebox import WhiteboxTools
 from enum import Enum #, unique
+from rasterio.enums import Resampling
 
 def classify_raster(raster, raster_steps, raster_classes):
     """ """
@@ -44,29 +46,6 @@ def xr_to_gdf(
         df.rename(columns={column_name: column_rename}, inplace=True)
     df_geometry = gpd.points_from_xy(df.x, df.y)
     return gpd.GeoDataFrame(df, crs=crs, geometry=df_geometry)
-
-
-# Function from sertit package (hillshade function)
-
-PATH_ARR_DS = Union[str, tuple, rasterio.DatasetReader]
-
-
-def aspect(ds: PATH_ARR_DS) -> (np.ma.masked_array, dict):
-    DEG_2_RAD = np.pi / 180
-    # array = ds.read(masked=True)
-    array = ds
-
-    # Squeeze if needed
-    expand = False
-    if len(array.shape) == 3 and array.shape[0] == 1:
-        array = np.squeeze(array)
-        expand = True
-    # Compute slope and aspect
-    dx, dy = np.gradient(array, *array.rio.resolution())
-    x2_y2 = dx**2 + dy**2
-    aspect = np.arctan2(dx, dy)
-    return aspect
-
 
 def np_to_xr(raster, reference_raster, crs, band_name ="Value"):
     if len(raster.shape) == 2:
@@ -101,6 +80,27 @@ class RoutingAlgorithm(Enum):
     def __str__(self) -> str:
         return self.value
 
+
+# Extracted from hillshade function from sertit package
+PATH_ARR_DS = Union[str, tuple, rasterio.DatasetReader]
+
+def aspect(ds: PATH_ARR_DS, proj_crs):
+    DEG_2_RAD = np.pi / 180
+    array = ds
+    # Squeeze if needed
+    expand = False
+    if len(array.shape) == 3 and array.shape[0] == 1:
+        array = np.squeeze(array)
+        expand = True
+    # Compute slope and aspect
+    dx, dy = np.gradient(array, *array.rio.resolution())
+    x2_y2 = dx**2 + dy**2
+    aspect = np.arctan2(dx, dy)
+    # from numpy to xarray
+    aspect = np_to_xr(aspect, ds, proj_crs)
+    # collocate
+    aspect = rasters.collocate(ds, aspect, Resampling.bilinear)
+    return aspect
 
 def compute_flow_direction(
     input_dtm_path: AnyPathType,

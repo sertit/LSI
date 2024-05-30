@@ -299,7 +299,7 @@ def elevation_raster(elevation_dbf, dem, aoi, output_path):
     else:
         return rasters.read(os.path.join(output_path, "elevation_weight.tif"))
 
-def hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path):
+def hydro_raster(hydro_dbf, dem_buff, aoi, ref_raster, tmp_dir, output_path):
     """
     Make raster of hydro_weights
     """
@@ -416,8 +416,18 @@ def hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path):
         hydro_gdf = xr_to_gdf(ed_reclass, ed_reclass.rio.crs)
         hydro_tif = hydro_gdf.merge(hydro_dbf, on="Value")
         hydro_tif = hydro_tif.set_index(["y", "x"]).Weights.to_xarray()
-        hydro_tif = hydro_tif.rio.write_crs(proj_crs.rio.crs)
+        hydro_tif = hydro_tif.rio.write_crs(ed_reclass.rio.crs)
 
+        # From UTM to LatLon
+        dst_transform = ref_raster.rio.transform
+        dst_crs = ref_raster.rio.crs
+
+        hydro_tif = hydro_tif.rio.reproject(dst_crs = dst_crs,
+                                            dst_transfom = dst_transform,
+                                            resampling=Resampling.bilinear)
+        hydro_tif = rasters.collocate(ref_raster, hydro_tif, Resampling.bilinear)
+
+        # Write in memory
         rasters.write(hydro_tif,  os.path.join(output_path, "hydro_weight.tif"))
         return hydro_tif
     else:
@@ -603,7 +613,7 @@ def lsi_core(input_dict: dict) -> None:
 
     # -- 5. Hydro
     hydro_dbf = gpd.read_file(hydro_dbf_path)
-    hydro_layer = hydro_raster(hydro_dbf, dem_buff, aoi, tmp_dir, output_path)
+    hydro_layer = hydro_raster(hydro_dbf, dem_buff, aoi, elevation_layer, tmp_dir, output_path)
 
     # -- 6. Aspect 
     aspect_dbf = gpd.read_file(aspect_dbf_path)
@@ -623,7 +633,6 @@ def lsi_core(input_dict: dict) -> None:
     landuse_weights = fw_dbf[fw_dbf.Factors == "Land use"].Weights.iloc[0]
 
     # Final weight
-
 
     lsi_tif = (slope_layer*float(slope_weights) 
             + geology_layer*float(geology_weights) 

@@ -8,8 +8,7 @@ import numpy as np
 from sertit.misc import ListEnum
 from sertit import rasters, vectors, geometry, AnyPath
 from sertit.rasters import FLOAT_NODATA
-from sertit.unistra import get_geodatastore, s3_env
-
+from sertit.unistra import get_geodatastore
 import rasterio as rio
 from rasterio.enums import Resampling
 
@@ -647,15 +646,3 @@ def lsi_core(input_dict: dict) -> None:
 
     return
     # raise NotImplementedError
-
-
-# def lsi_core(input_dict: dict) -> str:
-#     """
-#     TODO: Complete arguments and dosctring
-#     """
-
-#     # 0. Prepare Rasters and Database files of Weights
-#     lsi_compute(input_dict)
-
-#     return
-#     # raise NotImplementedError

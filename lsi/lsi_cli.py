@@ -1,5 +1,4 @@
 """ lsi : main script with CLI """
-import argparse
 import logging
 import sys
 try:
@@ -7,24 +6,24 @@ try:
 except:
     import click
 
-
-# from lsi import LOGGER_NAME # on the meantime to solve the acces to lsi.py
-# from lsi.lsi_core import lsi_core # on the meantime to solve the acces to lsi.py
 from lsi.lsi_core import LOGGER, LOGGING_FORMAT, DataPath, InputParameters, lsi_core
 from sertit import logs
-from sertit.files import to_abspath
 from sertit.logs import LOGGING_FORMAT
 from sertit.unistra import unistra_s3
 
-# from lsi_core import LOGGER # on the meantime to solve the acces to lsi.py
-# LOGGER = logging.getLogger(LOGGER_NAME) # on the meantime to solve the acces to lsi.py
 
+@click.command(
+    context_settings=dict(
+        help_option_names=["-h", "--help"],
+        max_content_width=300,
+        show_default=True,
+    )
+)
 
-@click.command()
 @click.option(
     "-aoi",
-    "--aoi_path",
-    help="Path to the AOI (shp, geojson) or WKT string",
+    "--aoi",
+    help="AOI (shp, geojson) or WKT string",
     type=click.Path(exists=True, resolve_path=True),
     required=True,
 )
@@ -45,18 +44,19 @@ from sertit.unistra import unistra_s3
 )
 @click.option(
     "-demp",
-    "--other_dem_path",
+    "--other_dem",
     help="DEM path if dem = Other",
     type=click.Path(exists=True, resolve_path=True),
 )
 @click.option(
     "-litho",
-    "--lithology_path",
+    "--lithology_gdb",
     help="GDB of lithologies.",
     type=click.Path(exists=True, resolve_path=True),
+    required=True,
 )
 @click.option(
-    "-lulc",
+    "-lc",
     "--landcover_name",
     help="Land Cover Name",
     type=click.Choice(
@@ -75,6 +75,7 @@ from sertit.unistra import unistra_s3
     "--weights_path",
     help="Geotadabase with the weights for the LSI computation.",
     type=click.Path(exists=True, resolve_path=True),
+    required=True,
 )
 @click.option(
     "-epsg",
@@ -86,7 +87,7 @@ from sertit.unistra import unistra_s3
 @click.option(
     "-out",
     "--output_path",
-    help="Output directory. ",
+    help="Output directory.",
     type=click.Path(file_okay=False, resolve_path=True, writable=True),
     required=True,
 )
@@ -98,11 +99,11 @@ from sertit.unistra import unistra_s3
 
 
 def compute_lsi(
-    aoi_path,
+    aoi,
     location,
     dem_name,
-    other_dem_path,
-    lithology_path,
+    other_dem,
+    lithology_gdb,
     landcover_name,
     weights_path,
     epsg_code,
@@ -115,11 +116,11 @@ def compute_lsi(
     with unistra_s3():
         # Insert args in a dict
         input_dict = {
-            InputParameters.AOI_PATH.value: aoi_path,
+            InputParameters.AOI_PATH.value: aoi,
             InputParameters.LOCATION.value: location,
             InputParameters.DEM_NAME.value: dem_name,
-            InputParameters.OTHER_DEM_PATH.value: other_dem_path,
-            InputParameters.LITHOLOGY_PATH.value: lithology_path,
+            InputParameters.OTHER_DEM_PATH.value: other_dem,
+            InputParameters.LITHOLOGY_PATH.value: lithology_gdb,
             InputParameters.LANDCOVER_NAME.value: landcover_name,
             InputParameters.WEIGHTS_PATH.value: weights_path,
             InputParameters.REF_EPSG.value: epsg_code,
@@ -132,12 +133,9 @@ def compute_lsi(
         LOGGER.info("lsi was a success.")
         sys.exit(0)
 
-        print("success")
-
     # pylint: disable=W0703
     except Exception as ex:
         LOGGER.error("lsi has failed:", exc_info=True)
-        print("not sucess")
         sys.exit(1)
 
 

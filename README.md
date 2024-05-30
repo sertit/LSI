@@ -16,10 +16,14 @@ This Index is estimated by a combination of data sources that includes the asses
 * Land use and land cover (LULC)
 * Distance from drainage network
 
+The minimum requirement for the LSI calculation is:
+* AOI
+* DEM
+* Lithology geodatabase
+* Weights geodatabases
+* Landcover
 
 # ArcGIS Pro inputs:
-
-(Layers)
 
 TODO
 
@@ -28,31 +32,44 @@ TODO
 ```text
 Usage: lsi.py [OPTIONS]
 
-   TODO
-  [Description ]
+  [Description TODO]
 
 Options:
-  -aoi, --aoi_path FILE                  Area of Interest for the calculation
-                                         of the LSI  [required]
-  -loc, --location STRING                Location of the AOI studied (Europe 
-                                         or Global).  [required]
-  -dem, --dem_name STRING                Name of the DEM to be used.
-  -demp, --other_dem_path FILE           External DEM to be used in the calculations
-                                         for the LSI. Provided by the user.
-  -litho, --lithology_path FILE          Geodatabase of Lithologies for the
-                                         Geology calculations [required]
-  -lulc, --landcover_name STRING         Name of the landcover to be used
-                                         [required]
-  -weights, --weights_path DIRECTORY      Path to the weights for each raster layer
-                                          Geology, Slope, Aspect, Elevation, Landuse
-                                          and Hydro to be used for the calculation of
-                                          the LSI. [required]
-  -epsg, --epsg_code INTEGER              EPSG Code
-  -out, --output_path DIRECTORY           Path to output directory.  [required]
-  --ftep BOOLEAN
+--aoi             -aoi      PATH                   Path to the AOI (shp, 
+                                                    geojson) or WKT       
+                                                    string                
+                                                    [required]            
+--location        -loc      [Europe|Global]        Location of the AOI   
+                                                    [required]            
+--dem_name        -dem      [COPDEM                DEM Name needed       
+                            30m|FABDEM|SRTM        [default: COPDEM 30m] 
+                            30m|Other]                                   
+--other_dem       -demp     PATH                   DEM path if dem =     
+                                                    Other                 
+--lithology_gdb   -litho    PATH                   GDB of lithologies.
+                                                   [required]   
+--landcover_name  -lc       [ESA WorldCover -      Land Cover Name       
+                            2021 (10m)|Corine      [default: ESA         
+                            Land Cover - 2018      Worldcover - 2021     
+                            (100m)]                (10m)]                
+--weights_path    -weights  PATH                   Geotadabase with the  
+                                                    weights for the LSI   
+                                                    computation.
+                                                    [required]          
+--epsg_code       -epsg     INTEGER RANGE          EPSG code, 4326 is    
+                            [1024<=x<=32767]       not accepted. By      
+                                                    default, it is the    
+                                                    EPSG code of the AOI  
+                                                    UTM zone.             
+--output_path     -out      DIRECTORY              Output directory.     
+                                                    [required]            
+--ftep                                             Set this flag if the  
+                                                    command line is run   
+                                                    on the ftep platform. 
+                                                    [default: False]      
+--help            -h                               Show this message and 
+                                                    exit.
 
-
-  -h, --help                              Show this message and exit.
 ```
 
 
@@ -69,4 +86,5 @@ Europe
 ```shell
 python lsi.py -aoi "\\path\to\aoi_austria.shp" -loc "Europe" -dem  "COPDEM 30m" -litho "\\path\to\lithology.gdb" -lulc "Corine Land Cover - 2018 (100m)" -weights "\\path\to\weights_europe" -out ""\\path\to\output""
 ```
+
 

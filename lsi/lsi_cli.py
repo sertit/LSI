@@ -61,8 +61,8 @@ from sertit.unistra import unistra_s3
     help="Land Cover Name",
     type=click.Choice(
         [
-            "ESA WorldCover - 2021 (10m)"
-            # "Corine Land Cover - 2018 (100m)",
+            "ESA WorldCover - 2021 (10m)",
+            "Corine Land Cover - 2018 (100m)",
             # "Global Land Cover - Copernicus 2019 (100m)",
             # "P03",
         ]

@@ -19,7 +19,6 @@ from sertit.unistra import unistra_s3
         show_default=True,
     )
 )
-
 @click.option(
     "-aoi",
     "--aoi",
@@ -32,7 +31,7 @@ from sertit.unistra import unistra_s3
     "--location",
     help="Location of the AOI",
     type=click.Choice(["Europe", "Global"]),  # to be added maybe Europe/Global_Legacy
-    required=True,
+    default="Global",
 )
 @click.option(
     "-dem",
@@ -49,14 +48,7 @@ from sertit.unistra import unistra_s3
     type=click.Path(exists=True, resolve_path=True),
 )
 @click.option(
-    "-litho",
-    "--lithology_gdb",
-    help="GDB of lithologies.",
-    type=click.Path(exists=True, resolve_path=True),
-    required=True,
-)
-@click.option(
-    "-lc",
+    "-lulc",
     "--landcover_name",
     help="Land Cover Name",
     type=click.Choice(
@@ -67,15 +59,27 @@ from sertit.unistra import unistra_s3
             # "P03",
         ]
     ),
-    default="ESA Worldcover - 2021 (10m)",
+    default="ESA WorldCover - 2021 (10m)",
     show_default=True,
 )
 @click.option(
-    "-weights",
-    "--weights_path",
-    help="Geotadabase with the weights for the LSI computation.",
-    type=click.Path(exists=True, resolve_path=True),
-    required=True,
+    "-eu_method",
+    "--europe_method",
+    help="if LOCATION = EUROPE, choose whether you want a fast computation with lower resolution (based on the pre-existent ELSUS layer) or a refined LSI computation",
+    type=click.Choice(
+        [
+            "Refined",
+            "Fast", #ELSUS layer
+        ]
+    ),
+    default="Refined",
+)
+@click.option(
+    "-res",
+    "--output_resolution",
+    help="Output resolution. Taking from DEM if not provided",
+    type=click.IntRange(min=1, max=1000),
+#    default=30,
 )
 @click.option(
     "-epsg",
@@ -97,15 +101,14 @@ from sertit.unistra import unistra_s3
     default=False,
 )
 
-
 def compute_lsi(
     aoi,
     location,
     dem_name,
     other_dem,
-    lithology_gdb,
     landcover_name,
-    weights_path,
+    europe_method,
+    output_resolution,
     epsg_code,
     output_path,
     ftep,
@@ -120,9 +123,9 @@ def compute_lsi(
             InputParameters.LOCATION.value: location,
             InputParameters.DEM_NAME.value: dem_name,
             InputParameters.OTHER_DEM_PATH.value: other_dem,
-            InputParameters.LITHOLOGY_PATH.value: lithology_gdb,
             InputParameters.LANDCOVER_NAME.value: landcover_name,
-            InputParameters.WEIGHTS_PATH.value: weights_path,
+            InputParameters.EUROPE_METHOD.value: europe_method,
+            InputParameters.OUTPUT_RESOLUTION.value: output_resolution,
             InputParameters.REF_EPSG.value: epsg_code,
             InputParameters.OUTPUT_DIR.value: output_path,
         }

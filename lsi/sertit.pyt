@@ -9,39 +9,117 @@ class Toolbox(object):
         self.alias = "Sertit"
 
         # List of tool classes associated with this toolbox
-        self.tools = [Template]
+        self.tools = [Lsi]
 
 
-class Template(object):
+class Lsi(object):
     def __init__(self):
         """Define the tool (tool name is the name of the class)."""
-        self.label = "Template"
+        self.label = "Lsi"
         self.description = ""
         self.canRunInBackground = False
+        self.category = "RRM"
 
     def getParameterInfo(self):
         """Define parameter definitions"""
         # Define parameter definitions
 
-        # AOI
+        # 0. AOI
         aoi = arcpy.Parameter(
             displayName="Aoi",
             name="aoi",
+            datatype="GPFeatureLayer",
+            parameterType="Required",
+            direction="Input",
+        )
+        # 1. Location
+        location = arcpy.Parameter(
+            displayName="Location",
+            name="location",
+            datatype="GPString",
+            parameterType="Required",
+            direction="Input",
+        )
+        location.filter.type = "ValueList"
+        location.filter.list = ["Europe", "Global"]
+        location.value = "Global"
+        # 2. Method for Location=Europe
+        method = arcpy.Parameter(
+            displayName="Method",
+            name="method",
+            datatype="GPString",
+            parameterType="Required",
+            direction="Input",
+        )
+        method.filter.type = "ValueList"
+        method.filter.list = ["Refined", "Fast"]
+        method.value = "Refined"
+        # 3. Landcover
+        landcover = arcpy.Parameter(
+            displayName="Landcover",
+            name="landcover",
+            datatype="GPString",
+            parameterType="Required",
+            direction="Input",
+            category="Advanced",
+        )
+
+        landcover.filter.type = "ValueList"
+        landcover.filter.list = [
+            "ESA WorldCover - 2021 (10m)",
+            "Corine Land Cover - 2018 (100m)",
+        ]
+        landcover.value = "ESA WorldCover - 2021 (10m)"
+        # 4. DEM
+        dem = arcpy.Parameter(
+            displayName="DEM",
+            name="dem",
+            datatype="GPString",
+            parameterType="Optional",
+            direction="Input",
+            category="Advanced",
+        )
+
+        dem.filter.type = "ValueList"
+        dem.filter.list = ["COPDEM 30m", "FABDEM", "SRTM 30m", "Other"]
+        dem.value = "COPDEM 30m"
+        # 5. Dem Raster path
+        dem_raster_path = arcpy.Parameter(
+            displayName="Dem Raster",
+            name="dem_raster",
             datatype="DEFile",
             parameterType="Optional",
             direction="Input",
+            category="Advanced",
         )
-
-        # Third parameter
+        # 6. Output resolution
+        output_resolution = arcpy.Parameter(
+            displayName="Output resolution",
+            name="output_resolution",
+            datatype="GPDouble",
+            direction="Input",
+            category="Advanced",
+        )
+        output_resolution.value = 30
+        # 7. Output folder
         output_folder = arcpy.Parameter(
             displayName="Output Folder",
             name="output_folder",
             datatype="DEFolder",
-            parameterType="Optional",
+            parameterType="Required",
             direction="Input",
         )
 
-        params = [aoi, output_folder]
+        params = [
+            aoi,
+            location,
+            method,
+            landcover,
+            dem,
+            dem_raster_path,
+            output_resolution,
+            output_folder,
+        ]
 
         return params
 
@@ -53,6 +131,18 @@ class Template(object):
         """Modify the values and properties of parameters before internal
         validation is performed.  This method is called whenever a parameter
         has been changed."""
+
+        if parameters[1].value == "Europe":
+            parameters[2].enabled = True
+        else:
+            parameters[2].enabled = False
+
+        if parameters[4].value == "Other":
+            parameters[5].enabled = True
+        else:
+            parameters[5].enabled = False
+
+
         return
 
     def updateMessages(self, parameters):
@@ -67,16 +157,17 @@ class Template(object):
         import sys
 
         # Don't remove these lines
-        tools_path = pathlib.Path(__file__).parent.parent
+        tools_path = pathlib.Path(__file__).parent
 
         # The tool is run from sertit_atools so add sertit_atools to python path
-        if tools_path.parent.name == "sertit_atools":
-            tools_path = str(tools_path.parent.absolute())
+        if tools_path.name == "sertit_atools":
+            tools_path = str(tools_path.absolute())
         # The tool is run from this project so only add the root folder to python path
         else:
-            tools_path = str(tools_path.absolute())
+            tools_path = str(tools_path.parent.absolute())
         if tools_path not in sys.path:
             sys.path.append(tools_path)
+
 
         main_arcgis(parameters, messages)
         return
@@ -87,6 +178,28 @@ class Template(object):
         return
 
 
+def epsg_from_arcgis_proj(arcgis_proj):
+    """
+    Extract espg code from arcgis proj
+    Args:
+        arcgis_proj () : Arcgis proj
+
+    Returns:
+        epsg_code : ndarray of the reclassified a raster
+    """
+    try:
+        sr = arcpy.SpatialReference()
+        sr.loadFromString(arcgis_proj)
+        epsg_code = sr.factoryCode
+
+    except:
+        raise ValueError(
+            "Input coordinate system is not from Arcgis coordinate system tools"
+        )
+
+    return epsg_code
+
+
 def main_arcgis(parameters, messages):
     """
     Main function of your arcgis tool .
@@ -94,36 +207,63 @@ def main_arcgis(parameters, messages):
     To be completed.
     """
     import logging.handlers
+    from sertit.arcpy import init_conda_arcpy_env, ArcPyLogger, ArcPyLogHandler, feature_layer_to_path
+
+    init_conda_arcpy_env()
 
     from sertit.arcpy import ArcPyLogHandler
-    from xxx_to_be_renamed import LOGGER_NAME
-    from xxx_to_be_renamed.xxx_to_be_renamed_core import xxx_to_be_renamed_core  # noqa
+    from lsi import LOGGER_NAME
+    from lsi.lsi_core import lsi_core, InputParameters, DataPath  # noqa
 
+    arcpy_logger = ArcPyLogger("LSI")
     logger = logging.getLogger(LOGGER_NAME)
-    handler = ArcPyLogHandler(
-        "output_log.log", maxBytes=1024 * 1024 * 2, backupCount=10  # 2MB log files
-    )
-    formatter = logging.Formatter("%(levelname)-8s %(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    # handler = ArcPyLogHandler(
+    #     "output_log.log", maxBytes=1024 * 1024 * 2, backupCount=10  # 2MB log files
+    # )
+    # formatter = logging.Formatter("%(levelname)-8s %(message)s")
+    # handler.setFormatter(formatter)
+    # logger.addHandler(handler)
+    logger = arcpy_logger.logger
     logger.setLevel(logging.DEBUG)
+
+    # --- ENV VAR ---
+    arcpy.env.overwriteOutput = True
+    arcpy.CheckOutExtension("Spatial")
 
     # -> Check extensions in used in this tool
     # arcpy.CheckOutExtension("Spatial")
 
-    logger.info("xxx_to_be_renamed_core")
+    logger.info("lsi_core")
 
     # -> Load inputs
     # aoi = parameters[0].valueAsText
     # output = parameters[1].valueAsText
 
+    aoi_path = feature_layer_to_path(parameters[0].value)
+
+
+    # --- Parameters ---
+    # Load inputs
+
+    input_dict = {
+        InputParameters.AOI_PATH.value: aoi_path,
+        InputParameters.LOCATION.value: parameters[1].valueAsText,
+        InputParameters.DEM_NAME.value: parameters[4].valueAsText,
+        InputParameters.OTHER_DEM_PATH.value: parameters[5].valueAsText,
+        InputParameters.LANDCOVER_NAME.value: parameters[3].valueAsText,
+        InputParameters.EUROPE_METHOD.value: parameters[2].valueAsText,
+        InputParameters.OUTPUT_RESOLUTION.value: parameters[6].valueAsText,
+        InputParameters.OUTPUT_DIR.value: parameters[7].valueAsText,
+    }
+    DataPath.load_paths()
     try:
-        xxx_to_be_renamed_core()
-        logger.info("xxx_to_be_renamed is a success.")
+        lsi_core(input_dict)
+        logger.info("lsi is a success.")
 
     except Exception:
         import traceback
 
-        logger.error("xxx_to_be_renamed has failed: %s", traceback.format_exc())
-    finally:
-        logger.removeHandler(handler)
+        logger.error("lsi has failed: %s", traceback.format_exc())
+
+    # finally:
+    #     logger.removeHandler(handler)

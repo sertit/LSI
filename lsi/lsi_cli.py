@@ -1,15 +1,14 @@
 """ lsi : main script with CLI """
+
 import logging
 import sys
-try:
-    import rich_click as click
-except:
-    import click
 
-from lsi.lsi_core import LOGGER, LOGGING_FORMAT, DataPath, InputParameters, lsi_core
+import click
 from sertit import logs
 from sertit.logs import LOGGING_FORMAT
 from sertit.unistra import unistra_s3
+
+from lsi.lsi_core import LOGGER, LOGGING_FORMAT, DataPath, InputParameters, lsi_core
 
 
 @click.command(
@@ -37,7 +36,9 @@ from sertit.unistra import unistra_s3
     "-dem",
     "--dem_name",
     help="DEM Name needed",
-    type=click.Choice(["COPDEM 30m", "FABDEM", "SRTM 30m", "Other"]), #"EUDEM 25m" ,  "MERIT 5 deg"
+    type=click.Choice(
+        ["COPDEM 30m", "FABDEM", "SRTM 30m", "Other"]
+    ),  # "EUDEM 25m" ,  "MERIT 5 deg"
     default="COPDEM 30m",
     show_default=True,
 )
@@ -69,7 +70,7 @@ from sertit.unistra import unistra_s3
     type=click.Choice(
         [
             "Refined",
-            "Fast", #ELSUS layer
+            "Fast",  # ELSUS layer
         ]
     ),
     default="Refined",
@@ -79,7 +80,7 @@ from sertit.unistra import unistra_s3
     "--output_resolution",
     help="Output resolution. Taking from DEM if not provided",
     type=click.IntRange(min=1, max=1000),
-#    default=30,
+    #    default=30,
 )
 @click.option(
     "-epsg",
@@ -100,7 +101,6 @@ from sertit.unistra import unistra_s3
     help="Set this flag if the command line is run on the ftep platform. ",
     default=False,
 )
-
 def compute_lsi(
     aoi,
     location,
@@ -131,15 +131,15 @@ def compute_lsi(
         }
         DataPath.load_paths(ftep)
 
-    try:
-        lsi_core(input_dict)
-        LOGGER.info("lsi was a success.")
-        sys.exit(0)
+        try:
+            lsi_core(input_dict)
+            LOGGER.info("lsi was a success.")
+            sys.exit(0)
 
-    # pylint: disable=W0703
-    except Exception as ex:
-        LOGGER.error("lsi has failed:", exc_info=True)
-        sys.exit(1)
+        # pylint: disable=W0703
+        except:
+            LOGGER.error("lsi has failed:", exc_info=True)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

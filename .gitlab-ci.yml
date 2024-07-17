@@ -18,9 +18,9 @@ deploy:
   stage: deploy
   trigger: $CENTRAL_REPOSITORY
   rules:
+    # Deploy if tag
+    - if: $CI_COMMIT_TAG
+      when: on_success
     # Manual deploy if commit to the default branch
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-      when: manual
-    # Manual deploy if commit to another branch
-    - if: $CI_COMMIT_REF_NAME != $CI_DEFAULT_BRANCH
       when: manual

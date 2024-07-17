@@ -160,7 +160,7 @@ def compute_flow_direction(
         )
 
     # Compute flow accumulation
-    result = method(
+    method(
         str(input_dtm_path),
         str(output_path),
     )
@@ -211,7 +211,7 @@ def compute_flow_accumulation(
         )
 
     # Compute flow accumulation
-    result = method(
+    method(
         str(input_dtm_path),
         str(output_path),
         out_type="cells",

@@ -15,7 +15,7 @@ from scipy.ndimage import distance_transform_edt
 from sertit import AnyPath, geometry, rasters, vectors
 from sertit.misc import ListEnum
 from sertit.rasters import FLOAT_NODATA
-from sertit.unistra import get_geodatastore, s3_env
+from sertit.unistra import get_geodatastore
 
 from lsi.src.utils import (
     RoutingAlgorithm,
@@ -1277,6 +1277,7 @@ def mosaicing(raster_list, proj_crs, output_path, name):
 
     return output_path
 
+
 # --- LSI computation
 def lsi_core(input_dict: dict) -> None:
     """
@@ -1360,7 +1361,7 @@ def lsi_core(input_dict: dict) -> None:
             raise ValueError(
                 "Your DEM has no elevations. Make sure your input DEM is valid"
             )
-    except:
+    except ValueError:
         if np.unique(dem_b).all == 0 or np.unique(dem_b).all == np.nan:
             raise ValueError(
                 "Your DEM has no elevations. Make sure your input DEM is valid"
@@ -1375,7 +1376,7 @@ def lsi_core(input_dict: dict) -> None:
 
     dem_b = rasters.crop(dem_path, aoi)
 
-    #LOGGER.info(dem_b.min(), dem_b.max())
+    # LOGGER.info(dem_b.min(), dem_b.max())
 
     rasters.write(dem_b, AnyPath(output_path) / "dem_original.tif")
     # -- Reprojecting DEMS

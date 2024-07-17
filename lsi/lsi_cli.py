@@ -8,7 +8,7 @@ from sertit import logs
 from sertit.logs import LOGGING_FORMAT
 from sertit.unistra import unistra_s3
 
-from lsi.lsi_core import LOGGER, LOGGING_FORMAT, DataPath, InputParameters, lsi_core
+from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
 
 
 @click.command(
@@ -137,7 +137,7 @@ def compute_lsi(
             sys.exit(0)
 
         # pylint: disable=W0703
-        except:
+        except:  # noqa
             LOGGER.error("lsi has failed:", exc_info=True)
             sys.exit(1)
 

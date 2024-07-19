@@ -1,3 +1,15 @@
+"""
+
+This file is part of LSI.
+
+LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
+
+"""
+
 import logging.handlers
 import sys
 
@@ -38,7 +50,7 @@ def compute_lsi():
     input_dict = {
         InputParameters.AOI_PATH.value: params.getString("aoi"),
         InputParameters.LOCATION.value: "Global",  # params.getString("location"),
-        InputParameters.DEM_NAME.value: params.getString("dem_name"),
+        InputParameters.DEM_NA_ME.value: params.getString("dem_name"),
         InputParameters.OTHER_DEM_PATH.value: None,
         InputParameters.LANDCOVER_NAME.value: "ESA WorldCover - 2021 (10m)",  # params.getString("lulc"),
         InputParameters.EUROPE_METHOD.value: "Refined",

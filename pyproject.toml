@@ -1,4 +1,45 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["lsi*"]
+
+[project]
+name = "lsi"
+authors = [
+    {name = "ICube-SERTIT", email = "dev-sertit@unistra.fr"},
+]
+description = "SERTIT python project"
+readme = "README.md"
+
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3.9",
+    "Operating System :: OS Independent",
+]
+version = "0.0.1"
+
+dependencies = [
+    # Libs for all platforms
+    "whitebox",
+    "jenkspy",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Tests & lint
+    "pre-commit",
+    "black",
+    "flake8",
+    "tempenv",
+    ]
+
 # compatibility black and isort
 [tool.isort]
 profile = "black"
 known_first_party = ["ci"]
+
+[project.scripts]
+lsi = "lsi.lsi_cli:compute_lsi"
+lsi_ftep = "lsi.lsi_ftep:compute_lsi"

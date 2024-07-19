@@ -22,7 +22,7 @@ There are two available methods (Global and Europe). The Global method is based 
 * Land use and land cover (LULC)
 
 > The Europe method uses the division by Climate-physiographically differentiated zones used for the susceptibility ELSUS map.
-> For more information: [ELSUS susceptibility map](https://www.sciencedirect.com/science/article/abs/pii/S0169555X14003675).
+> For more information: [ELSUS susceptibility map](https://publications.jrc.ec.europa.eu/repository/handle/JRC91935).
 
 The minimum requirement for the LSI calculation is:
 * AOI

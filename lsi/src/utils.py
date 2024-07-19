@@ -6,7 +6,9 @@
 from enum import Enum  # , unique
 from typing import Optional, Union  # , Any, Callable
 
+import dask.array as da
 import geopandas as gpd
+import jenkspy
 import numpy as np
 import rasterio
 import xarray as xr
@@ -217,3 +219,44 @@ def compute_flow_accumulation(
         out_type="cells",
         pntr=pointer,
     )
+
+
+def produce_a_reclass_arr(a_xarr, downsample_factor=200):
+    """
+    Produce reclassified a
+    Args:
+        a_xarr : a xarray
+
+    Returns:
+        xarray of the reclassified a raster
+    """
+
+    # jenks breaks computation
+    a_xarr_downsampled = a_xarr[:, ::downsample_factor, ::downsample_factor]
+    a_xarr_flatten = a_xarr_downsampled.stack(stacked=[...]).values
+    a_xarr_finite = a_xarr_flatten[np.isfinite(a_xarr_flatten)]
+    nb_class = 5
+    breaks = jenkspy.jenks_breaks(a_xarr_finite, nb_class)
+
+    # get max value from the a_xarr
+    a_xarr_max = a_xarr.stack(stacked=[...]).values
+    a_xarr_max = a_xarr_max[np.isfinite(a_xarr_max)]
+    breaks[5] = a_xarr_max.max()
+
+    # -- List conditions and choices
+    a_arr = a_xarr.data
+    conditions = [
+        (a_arr < breaks[1]),
+        (a_arr >= breaks[1]) & (a_arr < breaks[2]),
+        (a_arr >= breaks[2]) & (a_arr < breaks[3]),
+        (a_arr >= breaks[3]) & (a_arr < breaks[4]),
+        (a_arr >= breaks[4]) & (a_arr < breaks[5]),
+        (a_arr >= breaks[5]),
+    ]
+    choices = [1, 2, 3, 4, 5, 6]
+
+    a_reclass_arr = da.zeros_like(a_arr, dtype=int)
+    for condition, choice in zip(conditions, choices):
+        a_reclass_arr = da.where(condition, choice, a_reclass_arr)
+
+    return a_xarr.copy(data=a_reclass_arr)

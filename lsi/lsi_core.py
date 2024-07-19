@@ -24,6 +24,7 @@ from lsi.src.utils import (
     compute_flow_accumulation,
     initialize_whitebox_tools,
     np_to_xr,
+    produce_a_reclass_arr,
     xr_to_gdf,
 )
 
@@ -729,7 +730,8 @@ def hydro_raster(
     dem_buff,
     aoi,
     proj_crs,
-    ref_raster,
+    dem_max,
+    dem_min,
     output_resolution,
     tmp_dir,
     output_path,
@@ -740,7 +742,7 @@ def hydro_raster(
 
     LOGGER.info("-- Produce the Distance to Hydro raster for the LSI model")
     if not os.path.exists(os.path.join(output_path, "hydro_weight.tif")):
-        LOGGER.info("-- -- Preprocessing the DEM")
+        LOGGER.info("-- -- Preprocessing the DEM for hydro analysis")
         # -- Pre-process DEM
 
         # Prepare DEM
@@ -755,13 +757,8 @@ def hydro_raster(
         # no data
         dem_b = xr.where(dem_buff <= -700, FLOAT_NODATA, dem_buff)
 
-        dem_max = dem_b.max()
-        dem_min = dem_b.min()
-
-        # LOGGER.info(dem_min, dem_max)
-
-        # dem_max = dem_buff.max()
-        # dem_min = dem_buff.min()
+        # dem_max = dem_b.max()
+        # dem_min = dem_b.min()
 
         dem_b = dem_b.rio.write_crs(proj_crs)
         # dem_b = dem_b.rio.write_nodata(0, encoded=True)
@@ -813,6 +810,7 @@ def hydro_raster(
         )
 
         flow_acc = rasters.read(os.path.join(tmp_dir, "flow_acc.tif"))
+
         # Thresholding the flow accumulation
         elevation_threshold = (dem_max - abs(dem_min)).values
         flow_acc_thresh = xr.where(flow_acc > elevation_threshold, 1, 0)
@@ -829,8 +827,12 @@ def hydro_raster(
             os.path.join(tmp_dir, "flowacc_thresh_polyline.shp"),
         )
         flowacc_thresh_lines = vectors.read(
-            os.path.join(tmp_dir, "flowacc_thresh_polyline.shp")
+            os.path.join(tmp_dir, "flowacc_thresh_polyline.shp"), crs=proj_crs
         )
+
+        flowacc_thresh_lines = flowacc_thresh_lines.set_crs(proj_crs)
+        flowacc_thresh_lines = flowacc_thresh_lines.to_crs(aoi.crs)
+
         flowacc_thresh_lines = rasters.rasterize(
             path_or_ds=dem_b, vector=flowacc_thresh_lines, value_field="VALUE"
         )
@@ -859,7 +861,7 @@ def hydro_raster(
         euclidean_distance_xr = np_to_xr(euclidean_distance, dem_b, proj_crs)
         # transform from pixel to meters
 
-        LOGGER.info("-- -- Compute Flow Accumulation")
+        LOGGER.info("-- -- Distance to rivers classification")
         euclidean_distance_xr = euclidean_distance_xr * int(output_resolution)
         # -- Reclassify
         ED_STEPS = [0, 100, 200, 300, 400, 20000]  # 5000
@@ -881,7 +883,7 @@ def hydro_raster(
         hydro_tif = hydro_tif.set_index(["y", "x"]).Weights.to_xarray()
         hydro_tif = hydro_tif.rio.write_crs(ed_reclass.rio.crs)
 
-        rasters.write(hydro_tif, os.path.join(output_path, "hydro_weight_utm.tif"))
+        # rasters.write(hydro_tif, os.path.join(output_path, "hydro_weight_utm.tif"))
 
         # LOGGER.info(
         #     "-- -- Transform raster from UTM to LatLon"
@@ -1305,10 +1307,8 @@ def lsi_core(input_dict: dict) -> None:
     location = input_dict.get(InputParameters.LOCATION.value)
     dem_name = input_dict.get(InputParameters.DEM_NAME.value)
     other_dem_path = input_dict.get(InputParameters.OTHER_DEM_PATH.value)
-    #    lithology_path = input_dict.get(InputParameters.LITHOLOGY_PATH.value) #not anymore
     landcover_name = input_dict.get(InputParameters.LANDCOVER_NAME.value)
     europe_method = input_dict.get(InputParameters.EUROPE_METHOD.value)
-    #    weights_path = input_dict.get(InputParameters.WEIGHTS_PATH.value) #not anymore
     output_resolution = input_dict.get(InputParameters.OUTPUT_RESOLUTION.value)
     epsg_code = input_dict.get(InputParameters.REF_EPSG.value)
     output_path = input_dict.get(InputParameters.OUTPUT_DIR.value)
@@ -1328,7 +1328,11 @@ def lsi_core(input_dict: dict) -> None:
         proj_crs = aoi.estimate_utm_crs()
 
     # Reproject aoi to UTM crs
-    aoi = aoi.to_crs(proj_crs)
+    try:  # In some cases the AOI has a corrupted crs
+        aoi = aoi.to_crs(proj_crs)
+    except:  # noqa
+        aoi = aoi.set_crs(proj_crs, allow_override=True)
+        aoi = aoi.to_crs(proj_crs)
     # maybe you'll have to re-write a utm crs projection
 
     # --- Define standard paths for both locations EUROPE and GLOBAL
@@ -1344,14 +1348,12 @@ def lsi_core(input_dict: dict) -> None:
     # Store DEM path in a variable
     dem_path = dem_path_dict[dem_name]
 
-    LOGGER.info(dem_path)
-
     # Reading and Checking errors in DEM
     try:
         buffer = 300  # A buffer that will work for all processes. (Can be recropped depending on the need)
         aoi_b = geometry.buffer(aoi, buffer)
-        # dem_b = rasters.crop(dem_path, aoi_b)
-        dem_b = rasters.read(dem_path, window=aoi_b)
+        dem_b = rasters.crop(dem_path, aoi_b)
+        # dem_b = rasters.read(dem_path, window=aoi_b)
     except ValueError:
         raise ValueError(
             "Your AOI doesn't cover your DTM. Make sure your input data is valid."
@@ -1366,7 +1368,9 @@ def lsi_core(input_dict: dict) -> None:
             raise ValueError(
                 "Your DEM has no elevations. Make sure your input DEM is valid"
             )
-    LOGGER.info(dem_path)
+        dem_max = dem_b.max()
+        dem_min = dem_b.min()
+
     # -- Define Resolution
     if output_resolution:
         output_resolution = int(output_resolution)
@@ -1374,17 +1378,13 @@ def lsi_core(input_dict: dict) -> None:
         x_res, y_res = dem_b.rio.resolution()
         output_resolution = int(np.round(abs((x_res) + abs(y_res) / 2)))
 
-    dem_b = rasters.crop(dem_path, aoi)
+    dem_b = rasters.crop(dem_path, aoi_b)
 
-    # LOGGER.info(dem_b.min(), dem_b.max())
-
-    rasters.write(dem_b, AnyPath(output_path) / "dem_original.tif")
-    # -- Reprojecting DEMS
+    # -- Reprojecting DEM
     # DEM will be used as input for SLOPE, ELEVATION, ASPECT and HYDRO layers. Also as reference for Rasterization of Geology Layer.
     dem_b = dem_b.rio.reproject(
         proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
     )
-    dem_b = rasters.crop(dem_b, aoi_b)
     dem_b = dem_b.rio.write_nodata(FLOAT_NODATA)
     rasters.write(dem_b, AnyPath(output_path) / "dem_b.tif")
 
@@ -1627,28 +1627,16 @@ def lsi_core(input_dict: dict) -> None:
 
         # 0. DEM
         LOGGER.info("-- Reading DEM")
-        # with warnings.catch_warnings():
         #    warnings.simplefilter("ignore") # the buffer is being applied in degrees, not meters
-        #    aoi_b = geometry.buffer(aoi, buffer_n) # buffer (for LandUse + Hydro rasters)
-        # try:
-        #    dem_buff = rasters.crop(dem_path, aoi_b)
-        # except ValueError:
-        #    raise ValueError(
-        #       "Your AOI doesn't cover your DEM. Make sure your input data is valid."
-        #    )
-
-        # dem_b = rasters.crop(dem_b, aoi_b) # second crop
-
-        # with warnings.catch_warnings():
-        #    warnings.simplefilter("ignore") # the buffer is being applied in degrees, not meters
-        dem = rasters.crop(dem_b, aoi)
+        dem = rasters.crop(dem_path, aoi)
         dem = dem.rio.reproject(
             proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
         )
 
-        # with warnings.catch_warnings():
-        #     warnings.simplefilter("ignore") # the buffer is being applied in degrees, not meters
-        #     dem = rasters.crop(dem, aoi)
+        dem = dem.rio.write_nodata(FLOAT_NODATA)
+        # dem = dem.rio.reproject(
+        #     proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
+        # )
 
         # -- 1. Geology
         # Reading geology database, clip to aoi and reproject to proj_crs
@@ -1695,7 +1683,8 @@ def lsi_core(input_dict: dict) -> None:
             dem_b,
             aoi,
             proj_crs,
-            elevation_layer,
+            dem_max,
+            dem_min,
             output_resolution,
             tmp_dir,
             output_path,
@@ -1767,10 +1756,26 @@ def lsi_core(input_dict: dict) -> None:
     )  # There should not be negative values (border effect)
     lsi_tif = lsi_tif.rio.write_crs(proj_crs, inplace=True)
 
+    # -- LSI reclassification
+    # 1 to 5
+    LOGGER.info("-- Reclassification of LSI in 5 vulnerability classes")
+    lsi_reclass = produce_a_reclass_arr(lsi_tif, downsample_factor=300)
+
+    # Vectorizing
+    lsi_reclass_vector = rasters.vectorize(lsi_reclass)
+
+    # Delete class 6 for values above the max value of LSI
+    lsi_reclass_vector_c = lsi_reclass_vector[lsi_reclass_vector["raster_val"] != 6]
+
+    # Going back to raster
+    lsi_reclass_tif = rasters.rasterize(
+        lsi_tif, lsi_reclass_vector_c, value_field="raster_val"
+    )
+
     LOGGER.info("-- Writing lsi.tif in memory")
 
     # Write in memory
-    rasters.write(lsi_tif, os.path.join(output_path, "lsi.tif"))
+    rasters.write(lsi_reclass_tif, os.path.join(output_path, "lsi.tif"))
 
     return
     # raise NotImplementedError

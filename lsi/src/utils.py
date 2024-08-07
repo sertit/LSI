@@ -133,7 +133,7 @@ PATH_ARR_DS = Union[str, tuple, rasterio.DatasetReader]
 
 def aspect(ds: PATH_ARR_DS, proj_crs):
     """
-    This function was extracted from the hillshade function availble at the sertit package
+    This function was extracted from the hillshade function available at the sertit package
     available at: https://sertit-utils.readthedocs.io/en/
     It allows to calculate only the aspect
     """

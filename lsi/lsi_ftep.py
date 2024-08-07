@@ -50,13 +50,14 @@ def compute_lsi():
     input_dict = {
         InputParameters.AOI_PATH.value: params.getString("aoi"),
         InputParameters.LOCATION.value: "Global",  # params.getString("location"),
-        InputParameters.DEM_NA_ME.value: params.getString("dem_name"),
+        InputParameters.DEM_NAME.value: params.getString("dem_name"),
         InputParameters.OTHER_DEM_PATH.value: None,
         InputParameters.LANDCOVER_NAME.value: "ESA WorldCover - 2021 (10m)",  # params.getString("lulc"),
         InputParameters.EUROPE_METHOD.value: "Refined",
         InputParameters.OUTPUT_RESOLUTION.value: 10,
         InputParameters.REF_EPSG.value: None,
         InputParameters.OUTPUT_DIR.value: "/home/worker/workDir/outDir/output",
+        InputParameters.TEMP.value: False,
     }
     DataPath.load_paths(ftep=True)
 

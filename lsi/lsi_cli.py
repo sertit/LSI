@@ -49,7 +49,7 @@ from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
     "--dem_name",
     help="DEM Name needed",
     type=click.Choice(
-        ["COPDEM 30m", "FABDEM", "SRTM 30m", "Other"]
+        ["COPDEM 30m", "FABDEM", "Other"]
     ),  # "EUDEM 25m" ,  "MERIT 5 deg"
     default="COPDEM 30m",
     show_default=True,
@@ -68,7 +68,8 @@ from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
         [
             "ESA WorldCover - 2021 (10m)",
             "Corine Land Cover - 2018 (100m)",
-            # "Global Land Cover - Copernicus 2019 (100m)",
+            "Global Land Cover - Copernicus 2019 (100m)",
+            "ESRI Annual Land Cover 2021 (10m)",
             # "P03",
         ]
     ),
@@ -113,6 +114,11 @@ from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
     help="Set this flag if the command line is run on the ftep platform. ",
     default=False,
 )
+@click.option(
+    "--temp",
+    help="Set this flag False if you don't want to keep temporary files (geology, aspect, slope, etc). ",
+    default=True,
+)
 def compute_lsi(
     aoi,
     location,
@@ -124,6 +130,7 @@ def compute_lsi(
     epsg_code,
     output_path,
     ftep,
+    temp,
 ):
     logs.init_logger(LOGGER, logging.INFO, LOGGING_FORMAT)
     LOGGER.info("--- LSI ---")
@@ -140,6 +147,7 @@ def compute_lsi(
             InputParameters.OUTPUT_RESOLUTION.value: output_resolution,
             InputParameters.REF_EPSG.value: epsg_code,
             InputParameters.OUTPUT_DIR.value: output_path,
+            InputParameters.TEMP.value: temp,
         }
         DataPath.load_paths(ftep)
 

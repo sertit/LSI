@@ -254,6 +254,7 @@ def main_arcgis(parameters, messages):
         InputParameters.EUROPE_METHOD.value: parameters[2].valueAsText,
         InputParameters.OUTPUT_RESOLUTION.value: parameters[6].valueAsText,
         InputParameters.OUTPUT_DIR.value: parameters[7].valueAsText,
+        InputParameters.TEMP.value: False,
     }
     DataPath.load_paths()
     try:

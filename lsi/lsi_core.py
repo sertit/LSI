@@ -14,6 +14,7 @@ You should have received a copy of the GNU General Public License along with LSI
 
 import logging
 import os
+import shutil
 import warnings
 from enum import unique
 
@@ -46,8 +47,6 @@ DEBUG = False
 LOGGING_FORMAT = "%(asctime)s - [%(levelname)s] - %(message)s"
 LOGGER = logging.getLogger("LSI")  # on the meantime to solve the acces to lsi.py
 
-buffer_n = 0.1
-
 
 def geodatastore(ftep=False):
     """
@@ -79,11 +78,23 @@ class DataPath:
             / "Corine_Land_Cover"
             / "CLC_2018"
             / "clc2018_clc2018_v2018_20_raster100m"
-            / "CLC2018_CLC2018_V2018_20.tif"
+            / "CLC2018_CLC2018_V2018_20_epsg4326.tif"  # projected to EPSG:4326
         )
-
+        cls.GLC_PATH = (
+            cls.GLOBAL_DIR
+            / "Global_Land_Cover"
+            / "2019"
+            / "PROBAV_LC100_global_v3.0.1_2019-nrt_Discrete-Classification-map_EPSG-4326.tif"
+        )
+        cls.ELC_PATH = (
+            cls.GLOBAL_DIR
+            / "2021"
+            / "lulc2021"
+            / "lc2021"
+            / "38T_20230101-20240101.tif"
+            / ".vrt"  # Where to find it??
+        )
         #        cls.EUDEM_PATH = cls.GLOBAL_DIR / "EUDEM_v2" / "eudem_dem_3035_europe.tif"
-        cls.SRTM30_PATH = cls.GLOBAL_DIR / "SRTM_30m_v4" / "index.vrt"
         cls.COPDEM30_PATH = cls.GLOBAL_DIR / "COPDEM_30m" / "COPDEM_30m.vrt"
         cls.FABDEM_PATH = cls.GLOBAL_DIR / "FABDEM" / "FABDEM.vrt"
         cls.ELSUS_PATH = (
@@ -114,14 +125,13 @@ class InputParameters(ListEnum):
     LOCATION = "location"
     DEM_NAME = "dem_name"
     OTHER_DEM_PATH = "other_dem_path"
-    #   LITHOLOGY_PATH = "lithology_path" #not anymore
     LANDCOVER_NAME = "landcover_name"
     EUROPE_METHOD = "europe_method"
-    #   WEIGHTS_PATH = "weights_path" #not anymore
     OUTPUT_RESOLUTION = "output_resolution"
     REF_EPSG = "ref_epsg"
     OUTPUT_DIR = "output_path"
     TMP_DIR = "temp_dir"
+    TEMP = "temp"
 
 
 @unique
@@ -132,6 +142,8 @@ class LandcoverType(ListEnum):
 
     CLC = "Corine Land Cover - 2018 (100m)"
     ESAWC = "ESA WorldCover - 2021 (10m)"
+    GLC = "Global Land Cover - Copernicus 2019 (100m)"
+    ELC = "ESRI Annual Land Cover 2021 (10m)"
 
 
 @unique
@@ -161,7 +173,6 @@ class DemType(ListEnum):
     """
 
     #    EUDEM = "EUDEM 25m"
-    SRTM = "SRTM 30m"
     #    MERIT = "MERIT 5 deg"
     COPDEM_30 = "COPDEM 30m"
     FABDEM = "FABDEM"
@@ -176,6 +187,10 @@ class LandcoverStructure(ListEnum):
     CLC = "Corine Land Cover - 2018 (100m)"
 
     ESAWC = "ESA WorldCover - 2021 (10m)"
+
+    GLC = "Global Land Cover - Copernicus 2019 (100m)"
+
+    ELC = "ESRI Annual Land Cover 2021 (10m)"
 
 
 def reclass_landcover(landcover, landcover_name):
@@ -362,6 +377,104 @@ def reclass_landcover(landcover, landcover_name):
             landcover_reclass == 999, 997, landcover_reclass
         )  # Not applicable -> Not applicable
 
+    elif landcover_name == LandcoverType.GLC.value:
+        # Transform to landcover_dbf scale (CORINE LAND COVER)
+        landcover_reclass = xr.where(
+            landcover == 0, 997, landcover
+        )  # No input data available -> NA
+        landcover_reclass = xr.where(
+            landcover_reclass == 20, 2, landcover_reclass
+        )  # Shrubs -> Grassland
+        landcover_reclass = xr.where(
+            landcover_reclass == 30, 2, landcover_reclass
+        )  # Herbaceous vegetation -> Grassland
+        landcover_reclass = xr.where(
+            landcover_reclass == 40, 1, landcover_reclass
+        )  # Cultivated and managed vegetation/agriculture (cropland) -> Arable Land
+        landcover_reclass = xr.where(
+            landcover_reclass == 50, 5, landcover_reclass
+        )  # Urban / built-up -> Urban areas
+        landcover_reclass = xr.where(
+            landcover_reclass == 60, 4, landcover_reclass
+        )  # Bare / sparse vegetation -> Bare
+        landcover_reclass = xr.where(
+            landcover_reclass == 70, 997, landcover_reclass
+        )  # Snow and ice -> Not applicable
+        landcover_reclass = xr.where(
+            landcover_reclass == 80, 6, landcover_reclass
+        )  # Permanent water bodies -> Water areas
+        landcover_reclass = xr.where(
+            landcover_reclass == 90, 6, landcover_reclass
+        )  # Herbaceous wetland -> Water areas
+        landcover_reclass = xr.where(
+            landcover_reclass == 100, 2, landcover_reclass
+        )  # Moss and lichen -> Grassland
+        landcover_reclass = xr.where(
+            landcover_reclass == 111, 3, landcover_reclass
+        )  # Closed forest, evergreen needle leaf -> Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 112, 3, landcover_reclass
+        )  # Closed forest, evergreen broad leaf -> Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 113, 3, landcover_reclass
+        )  # Closed forest, deciduous needle leaf -> Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 114, 3, landcover_reclass
+        )  # Closed forest, deciduous broad leaf -> Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 115, 3, landcover_reclass
+        )  # Closed forest, mixed -> Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 116, 3, landcover_reclass
+        )  # Closed forest, unknown -> Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 121, 3, landcover_reclass
+        )  # Open forest, evergreen needle leaf -> Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 122, 3, landcover_reclass
+        )  # Open forest, evergreen broad leaf -> Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 123, 3, landcover_reclass
+        )  # Open forest, deciduous needle leaf -> Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 124, 3, landcover_reclass
+        )  # Open forest, deciduous broad leaf -> Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 125, 3, landcover_reclass
+        )  # Open forest, mixed -> Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 126, 3, landcover_reclass
+        )  # Open forest, unknown -> Forest
+
+    elif landcover_name == LandcoverType.ELC.value:
+        landcover_reclass = xr.where(
+            landcover == 1, 6, landcover
+        )  # Water -> Water areas
+        landcover_reclass = xr.where(
+            landcover_reclass == 2, 3, landcover_reclass
+        )  # Trees -> Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 4, 997, landcover_reclass
+        )  # Flooded vegetation -> Not applicable
+        landcover_reclass = xr.where(
+            landcover_reclass == 5, 1, landcover_reclass
+        )  # Crops -> Arable Land
+        landcover_reclass = xr.where(
+            landcover_reclass == 7, 5, landcover_reclass
+        )  # Built Area -> Urban areas
+        landcover_reclass = xr.where(
+            landcover_reclass == 8, 4, landcover_reclass
+        )  # Bare ground -> Bare
+        landcover_reclass = xr.where(
+            landcover_reclass == 9, 997, landcover_reclass
+        )  # Snow/Ice -> Not applicable
+        landcover_reclass = xr.where(
+            landcover_reclass == 10, 997, landcover_reclass
+        )  # Clouds -> Not applicable
+        landcover_reclass = xr.where(
+            landcover_reclass == 11, 2, landcover_reclass
+        )  # Rangeland -> Grassland
+
     return landcover_reclass
 
 
@@ -389,7 +502,7 @@ def reclass_landcover_elsus(landcover, proj_crs, landcover_name):
         )  # Grassland -> Pasture/Meadow
         landcover_reclass = xr.where(
             landcover_reclass == 40, 1, landcover_reclass
-        )  # Cropland -> Cropland
+        )  # Arable land -> Cropland
         landcover_reclass = xr.where(
             landcover_reclass == 50, 7, landcover_reclass
         )  # Built-up -> Artificial
@@ -556,6 +669,103 @@ def reclass_landcover_elsus(landcover, proj_crs, landcover_name):
             landcover_reclass == 999, 997, landcover_reclass
         )  # Not applicable -> Not applicable
 
+    elif landcover_name == LandcoverType.GLC.value:
+        landcover_reclass = xr.where(
+            landcover == 0, 997, landcover
+        )  # No input data available -> Not applicable
+        landcover_reclass = xr.where(
+            landcover_reclass == 20, 4, landcover_reclass
+        )  # Shrubs -> Shrub
+        landcover_reclass = xr.where(
+            landcover_reclass == 30, 5, landcover_reclass
+        )  # Herbaceous vegetation -> Pasture/Meadow
+        landcover_reclass = xr.where(
+            landcover_reclass == 40, 1, landcover_reclass
+        )  # Cultivated and managed vegetation/agriculture (cropland) -> Cropland
+        landcover_reclass = xr.where(
+            landcover_reclass == 50, 7, landcover_reclass
+        )  # Urban / built-up -> Artificial
+        landcover_reclass = xr.where(
+            landcover_reclass == 60, 6, landcover_reclass
+        )  # Bare / sparse vegetation -> Bare
+        landcover_reclass = xr.where(
+            landcover_reclass == 70, 997, landcover_reclass
+        )  # Snow and ice -> Not applicable
+        landcover_reclass = xr.where(
+            landcover_reclass == 80, 997, landcover_reclass
+        )  # Permanent water bodies -> Not applicable
+        landcover_reclass = xr.where(
+            landcover_reclass == 90, 997, landcover_reclass
+        )  # Herbaceous wetland -> Not applicable
+        landcover_reclass = xr.where(
+            landcover_reclass == 100, 5, landcover_reclass
+        )  # Moss and lichen -> Pasture/Meadow
+        landcover_reclass = xr.where(
+            landcover_reclass == 111, 3, landcover_reclass
+        )  # Closed forest, evergreen needle leaf -> Closed Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 112, 3, landcover_reclass
+        )  # Closed forest, evergreen broad leaf -> Closed Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 113, 3, landcover_reclass
+        )  # Closed forest, deciduous needle leaf -> Closed Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 114, 3, landcover_reclass
+        )  # Closed forest, deciduous broad leaf -> Closed Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 115, 3, landcover_reclass
+        )  # Closed forest, mixed -> Closed Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 116, 3, landcover_reclass
+        )  # Closed forest, unknown -> Closed Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 121, 2, landcover_reclass
+        )  # Open forest, evergreen needle leaf -> Open Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 122, 2, landcover_reclass
+        )  # Open forest, evergreen broad leaf -> Open Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 123, 2, landcover_reclass
+        )  # Open forest, deciduous needle leaf -> Open Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 124, 2, landcover_reclass
+        )  # Open forest, deciduous broad leaf -> Open Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 125, 2, landcover_reclass
+        )  # Open forest, mixed -> Open Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 126, 2, landcover_reclass
+        )  # Open forest, unknown -> Open Forest
+
+    elif landcover_name == LandcoverType.ELC.value:
+        landcover_reclass = xr.where(
+            landcover == 1, 997, landcover
+        )  # Water -> Not applicable
+        landcover_reclass = xr.where(
+            landcover_reclass == 2, 3, landcover_reclass
+        )  # Trees -> Closed Forest
+        landcover_reclass = xr.where(
+            landcover_reclass == 4, 997, landcover_reclass
+        )  # Flooded vegetation -> Not applicable
+        landcover_reclass = xr.where(
+            landcover_reclass == 5, 1, landcover_reclass
+        )  # Crops -> Cropland
+        landcover_reclass = xr.where(
+            landcover_reclass == 7, 7, landcover_reclass
+        )  # Built Area -> Artificial
+        landcover_reclass = xr.where(
+            landcover_reclass == 8, 6, landcover_reclass
+        )  # Bare ground -> Bare
+        landcover_reclass = xr.where(
+            landcover_reclass == 9, 997, landcover_reclass
+        )  # Snow/Ice -> Not applicable
+        landcover_reclass = xr.where(
+            landcover_reclass == 10, 997, landcover_reclass
+        )  # Clouds -> Not applicable
+        landcover_reclass = xr.where(
+            landcover_reclass == 11, 5, landcover_reclass
+        )  # Rangeland -> Pasture/Meadow
+
     landcover_reclass = landcover_reclass.rio.write_crs(proj_crs, inplace=True)
     return landcover_reclass
 
@@ -632,8 +842,9 @@ def slope_raster(slope_dbf, dem_b, aoi, proj_crs, output_path):
     """ """
     LOGGER.info("-- Produce the Slope raster for the LSI model")
     if not os.path.exists(os.path.join(output_path, "slope_weight.tif")):
-        slope = rasters.slope(dem_b, in_rad=False)
-
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            slope = rasters.slope(dem_b.astype(np.float32), in_rad=False)
         # -- Classify
         SLOPE_STEPS = [0, 2, 5, 15, 35, 90]
         SLOPE_CLASSES = {
@@ -664,7 +875,7 @@ def slope_raster(slope_dbf, dem_b, aoi, proj_crs, output_path):
 
 def landcover_raster(
     landuse_dbf,
-    lulc_path,
+    lulc,
     landcover_name,
     aoi,
     proj_crs,
@@ -675,9 +886,6 @@ def landcover_raster(
     LOGGER.info("-- Produce the Land use raster for the LSI model")
 
     if not os.path.exists(os.path.join(output_path, "landcover_weight.tif")):
-        aoi_b = geometry.buffer(aoi, 200)  # buffer (for LandUse + Hydro rasters)
-        lulc = rasters.crop(lulc_path, aoi_b)
-        # lulc = rasters.collocate(dem, lulc, Resampling.nearest)
 
         # Reclassification of LULC for LSI calculation
         landcover_reclass = reclass_landcover(lulc, landcover_name)
@@ -738,54 +946,40 @@ def elevation_raster(elevation_dbf, dem_b, aoi, proj_crs, output_path):
 
 
 def hydro_raster(
-    hydro_dbf,
-    dem_buff,
-    aoi,
-    proj_crs,
-    dem_max,
-    dem_min,
-    output_resolution,
-    tmp_dir,
-    output_path,
+    hydro_dbf, dem_buff, aoi, proj_crs, dem_max, dem_min, output_resolution, tmp_dir
 ):
     """
     Make raster of hydro_weights
     """
 
     LOGGER.info("-- Produce the Distance to Hydro raster for the LSI model")
-    if not os.path.exists(os.path.join(output_path, "hydro_weight.tif")):
+    if not os.path.exists(os.path.join(tmp_dir, "hydro_weight.tif")):
         LOGGER.info("-- -- Preprocessing the DEM for hydro analysis")
         # -- Pre-process DEM
 
         # Prepare DEM
-        # utm_zone = aoi.estimate_utm_crs()
-
         # reproject
-        dem_b = dem_buff.rio.reproject(
-            dst_crs=proj_crs,
-            nodata=rasters.FLOAT_NODATA,
-            resampling=Resampling.bilinear,
-        )
-        # no data
-        dem_b = xr.where(dem_buff <= -700, FLOAT_NODATA, dem_buff)
+        with (
+            warnings.catch_warnings()
+        ):  # Catching -> The nodata value (3.402823466e+38)
+            warnings.simplefilter("ignore")
+            dem_b = dem_buff.rio.reproject(
+                dst_crs=proj_crs,
+                nodata=rasters.FLOAT_NODATA,
+                resampling=Resampling.bilinear,
+            )
+            # no data
+            dem_b = xr.where(dem_buff <= -700, FLOAT_NODATA, dem_buff)
 
-        # dem_max = dem_b.max()
-        # dem_min = dem_b.min()
+            dem_b = dem_b.rio.write_crs(proj_crs)
 
-        dem_b = dem_b.rio.write_crs(proj_crs)
-        # dem_b = dem_b.rio.write_nodata(0, encoded=True)
-        # dem_b = dem_b.rio.write_nodata(FLOAT_NODATA, encoded=True)
-
-        # reproject
-        dem_b = dem_b.rio.reproject(
-            dst_crs=proj_crs,
-            # nodata=rasters.FLOAT_NODATA,
-            resampling=Resampling.bilinear,
-        )
-        dem_b = rasters.crop(dem_b, aoi)
-        # resolution
-        # x_res, y_res = dem_b.rio.resolution()
-        # dem_resolution = (abs(x_res) + abs(y_res)) / 2
+            # reproject
+            dem_b = dem_b.rio.reproject(
+                dst_crs=proj_crs,
+                # nodata=rasters.FLOAT_NODATA,
+                resampling=Resampling.bilinear,
+            )
+            dem_b = rasters.crop(dem_b, aoi)
 
         # Write DEM in memory
         rasters.write(
@@ -947,10 +1141,10 @@ def hydro_raster(
         hydro_tif = hydro_tif.rio.reproject(
             proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
         )
-        rasters.write(hydro_tif, os.path.join(output_path, "hydro_weight.tif"))
+        rasters.write(hydro_tif, os.path.join(tmp_dir, "hydro_weight.tif"))
         return hydro_tif
     else:
-        return rasters.read(os.path.join(output_path, "hydro_weight.tif"))
+        return rasters.read(os.path.join(tmp_dir, "hydro_weight.tif"))
 
 
 def aspect_raster(aspect_dbf, dem_b, aoi, proj_crs, output_path):
@@ -1046,7 +1240,6 @@ def landcover_raster_eu(
     Returns:
         Path for the Landcover Final Weights
     """
-    LOGGER.info(" --- LSI : Landcover")
     landcover_weight_dbf = gpd.read_file(landcover_weight_path)
     landcover_weight_dbf.loc[len(landcover_weight_dbf)] = [
         997,
@@ -1058,7 +1251,7 @@ def landcover_raster_eu(
         warnings.simplefilter(
             "ignore"
         )  # the buffer is being applied in degrees, not meters
-        buffer_lc = 200
+        buffer_lc = 1500
         aoi_b = geometry.buffer(aoi_zone, buffer_lc)
     try:
         landcover = rasters.crop(landcover_path, aoi_b)
@@ -1088,51 +1281,19 @@ def landcover_raster_eu(
 
     # Write in memory
     temp_dir = os.path.join(
-        tmp_dir, AnyPath("landcover_" + str(zone_id) + "_" + str(counter) + "_utm.tif")
-    )
-    output_dir = os.path.join(
         tmp_dir, AnyPath("landcover_" + str(zone_id) + "_" + str(counter) + ".tif")
     )
 
-    rasters.write(landcover_tif, temp_dir, compress="deflate", predictor=1)
+    # rasters.write(landcover_tif, temp_dir, compress="deflate", predictor=1)
     rasters.write(
         landcover_tif.rio.reproject(
             proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
         ),
-        output_dir,
+        temp_dir,
         predictor=1,
     )
-    # From UTM to LatLon
-    # with rio.open(temp_dir) as src:
-    #        src_crs = src.crs
-    #        src_transform = src.transform
-    #        src_height = src.height
-    #        src_width = src.width
 
-    #        dst_transform, dst_width, dst_height = calculate_default_transform(
-    #            src_crs, proj_crs, src_width, src_height, *src.bounds)
-    #        # Define the metadata for the destination file
-    #         dst_meta = src.meta.copy()
-    #         dst_meta.update({
-    #             'crs': proj_crs,
-    #             'transform': dst_transform,
-    #             'width': dst_width,
-    #             'height': dst_height
-    #         })
-
-    #         # Create a new file to save the reprojected raster
-    #         with rio.open(output_dir, 'w', **dst_meta) as dst:
-    #             for i in range(1, src.count + 1):
-    #                 reproject(
-    #                     source=rio.band(src, i),
-    #                     destination=rio.band(dst, i),
-    #                     src_transform=src_transform,
-    #                     src_crs=src_crs,
-    #                     dst_transform=dst_transform,
-    #                     dst_crs=proj_crs,
-    #                     resampling=Resampling.nearest)
-
-    return output_dir
+    return temp_dir
 
 
 def slope_raster_eu(
@@ -1146,27 +1307,21 @@ def slope_raster_eu(
     tmp_dir,
     output_resolution,
 ):
-
-    LOGGER.info(" --- LSI : Slope")
     # -- Slope raster computation
-
     slope_dbf = gpd.read_file(slope_weight_path)
-    slope_degrees = rasters.slope(dem, in_rad=False)
     with warnings.catch_warnings():
-        warnings.simplefilter(
-            "ignore"
-        )  # the buffer is being applied in degrees, not meters
-        buffer_slope = 200
-        aoi_b = geometry.buffer(aoi_zone, buffer_slope)
-    # slope_degrees = rasters.crop(slope_degrees, aoi_b)
+        warnings.simplefilter("ignore")
+        slope_degrees = rasters.slope(dem.astype(np.float32), in_rad=False)
+    buffer_slope = 200
+    aoi_b = geometry.buffer(aoi_zone, buffer_slope)
 
     # -- Slope Reclassification:
     # Define steps of classification depending on the zone
     if int(zone_id) == 0:
         SLOPE_STEPS = [0, 1, 9, 13, 21, 27, 35, 42, 90]
-    elif int(zone_id) in range(1, 4):
+    elif int(zone_id) in range(1, 5):
         SLOPE_STEPS = [0, 1, 5, 9, 13, 17, 21, 31, 90]
-    elif int(zone_id) in range(5, 6):
+    elif int(zone_id) in range(5, 7):
         SLOPE_STEPS = [0, 1, 4, 8, 13, 18, 26, 38, 90]
     SLOPE_CLASSES = {
         1: f"{SLOPE_STEPS[0]} - {SLOPE_STEPS[1]}",
@@ -1186,6 +1341,7 @@ def slope_raster_eu(
     slope_d.attrs["long_name"] = slope_name
     slope_d = rasters.crop(slope_d, aoi_b)
     slope_gdf = xr_to_gdf(slope_d, proj_crs)
+
     # -- JOIN Slope with Weights
     slope_tif = slope_gdf.merge(slope_dbf, on="Value")
     slope_tif = slope_tif.set_index(["y", "x"]).Weight.to_xarray()
@@ -1197,57 +1353,24 @@ def slope_raster_eu(
     final_weight_factor = final_weight_dbf[final_weight_dbf.Factor == "Slope"][
         zone_class
     ].iloc[0]
+
     # Apply factor
     slope_tif = slope_tif * final_weight_factor
 
     # Write in memory
     temp_dir = os.path.join(
-        tmp_dir, AnyPath("slope_" + str(zone_id) + "_" + str(counter) + "utm.tif")
-    )
-    output_dir = os.path.join(
         tmp_dir, AnyPath("slope_" + str(zone_id) + "_" + str(counter) + ".tif")
     )
 
-    rasters.write(slope_tif, temp_dir, compress="deflate", predictor=1)
     rasters.write(
         slope_tif.rio.reproject(
             proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
         ),
-        output_dir,
+        temp_dir,
         predictor=1,
     )
 
-    # # From UTM to LatLon
-    # with rio.open(temp_dir) as src:
-    #         src_crs = src.crs
-    #         src_transform = src.transform
-    #         src_height = src.height
-    #         src_width = src.width
-
-    #         dst_transform, dst_width, dst_height = calculate_default_transform(
-    #             src_crs, proj_crs, src_width, src_height, *src.bounds)
-    #         # Define the metadata for the destination file
-    #         dst_meta = src.meta.copy()
-    #         dst_meta.update({
-    #             'crs': proj_crs,²
-    #             'transform': dst_transform,
-    #             'width': dst_width,
-    #             'height': dst_height
-    #         })
-
-    #         # Create a new file to save the reprojected raster
-    #         with rio.open(output_dir, 'w', **dst_meta) as dst:
-    #             for i in range(1, src.count + 1):
-    #                 reproject(
-    #                     source=rio.band(src, i),
-    #                     destination=rio.band(dst, i),
-    #                     src_transform=src_transform,
-    #                     src_crs=src_crs,
-    #                     dst_transform=dst_transform,
-    #                     dst_crs=proj_crs,
-    #                     resampling=Resampling.nearest)
-
-    return output_dir
+    return temp_dir
 
 
 def mosaicing(raster_list, proj_crs, output_path, name):
@@ -1324,6 +1447,7 @@ def lsi_core(input_dict: dict) -> None:
     output_resolution = input_dict.get(InputParameters.OUTPUT_RESOLUTION.value)
     epsg_code = input_dict.get(InputParameters.REF_EPSG.value)
     output_path = input_dict.get(InputParameters.OUTPUT_DIR.value)
+    temp = input_dict.get(InputParameters.TEMP.value)
 
     # Define folder for temporal files
     tmp_dir = os.path.join(output_path, "temp_dir")
@@ -1345,7 +1469,6 @@ def lsi_core(input_dict: dict) -> None:
     except:  # noqa
         aoi = aoi.set_crs(proj_crs, allow_override=True)
         aoi = aoi.to_crs(proj_crs)
-    # maybe you'll have to re-write a utm crs projection
 
     # --- Define standard paths for both locations EUROPE and GLOBAL
     lithology_path = str(DataPath.LITHOLOGY_PATH)
@@ -1354,7 +1477,6 @@ def lsi_core(input_dict: dict) -> None:
     dem_path_dict = {
         DemType.COPDEM_30.value: DataPath.COPDEM30_PATH,
         DemType.FABDEM.value: DataPath.FABDEM_PATH,
-        DemType.SRTM.value: DataPath.SRTM30_PATH,
         DemType.OTHER.value: other_dem_path,
     }
     # Store DEM path in a variable
@@ -1362,10 +1484,9 @@ def lsi_core(input_dict: dict) -> None:
 
     # Reading and Checking errors in DEM
     try:
-        buffer = 300  # A buffer that will work for all processes. (Can be recropped depending on the need)
+        buffer = 500  # A buffer that will work for all processes. (Can be recropped depending on the need)
         aoi_b = geometry.buffer(aoi, buffer)
         dem_b = rasters.crop(dem_path, aoi_b)
-        # dem_b = rasters.read(dem_path, window=aoi_b)
     except ValueError:
         raise ValueError(
             "Your AOI doesn't cover your DTM. Make sure your input data is valid."
@@ -1398,13 +1519,13 @@ def lsi_core(input_dict: dict) -> None:
         proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
     )
     dem_b = dem_b.rio.write_nodata(FLOAT_NODATA)
-    rasters.write(dem_b, AnyPath(output_path) / "dem_b.tif")
+    rasters.write(dem_b, AnyPath(tmp_dir) / "dem_b.tif")
 
-    # Define inputs for ELSUS (inside of Europe) method
-    physio_zones_path = str(DataPath.ELSUS_ZONES_PATH)
-
-    # -- Define Weights dbfs paths:
+    # -- DEFINING WEIGHT DBF PATHS ONLY:
     if location == LocationType.EUROPE.value:
+        # Define inputs for ELSUS (inside of Europe) method
+        physio_zones_path = str(DataPath.ELSUS_ZONES_PATH)
+
         elsus_weights_path = (
             DataPath.WEIGHTS_EUROPE_PATH
         )  # The path for each Zone weights will later
@@ -1429,7 +1550,7 @@ def lsi_core(input_dict: dict) -> None:
             DataPath.WEIGHTS_GLOBAL_PATH / "Final_weights.dbf"
         )
 
-    # Store landcover path in a variable depending on LOCATION
+    # --  LSI COMPUTATION ACCORDING TO METHOD
     # -- Check location (EUROPE or OUTSIDE of Europe)
     if location == LocationType.EUROPE.value:
         LOGGER.info("-- LSI - LOCATION : EUROPE")
@@ -1475,12 +1596,6 @@ def lsi_core(input_dict: dict) -> None:
             lulc_path = DataPath.CLC_PATH
 
         # -- 0. DEM
-        LOGGER.info("-- Reading DEM")
-        # with warnings.catch_warnings():
-        #    warnings.simplefilter("ignore") # the buffer is being applied in degrees, not meters
-        #    aoi_b = geometry.buffer(aoi, buffer_n) # buffer (for LandUse + Hydro rasters)
-        # dem_b = rasters.crop(dem_path, aoi_b)
-
         LOGGER.info("-- Crop DEM")
         dem = rasters.crop(dem_b, aoi)
 
@@ -1497,11 +1612,10 @@ def lsi_core(input_dict: dict) -> None:
         # momentaneous line to add Not Applicable class
         geology_dbf.loc[len(geology_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
         geology_tif = geology_raster(
-            geology_dbf, litho_shp, dem, aoi, proj_crs, output_path
+            geology_dbf, litho_shp, dem, aoi, proj_crs, tmp_dir
         )
 
         # -- 2. Landcover + Slope (calculations per zone in the AOI according to ELSUS)
-
         LOGGER.info("-- Defining physio zones for Europe Refined method")
 
         # -- Read Climate-physiographic zones
@@ -1531,7 +1645,7 @@ def lsi_core(input_dict: dict) -> None:
         i = 0
         landcover_list = []
         slope_list = []
-        for index, row in physio_zones_aoi.iterrows():
+        for _, row in physio_zones_aoi.iterrows():
             i += 1
             # The Climatic Zone
             zone = row["Zone"]
@@ -1546,18 +1660,18 @@ def lsi_core(input_dict: dict) -> None:
             # ---- LANDCOVER CASE ----
             if zone != 0:  # For Zone0 the Landcover is not used
                 # -- Define weights path
-                # landcover_w_path = os.path.join(elsus_weights_path,  str(db_file) + "Landcover_Z" + str(zone) + ".dbf")
                 landcover_w_path = str(
                     elsus_weights_path
                     / str(str(db_file) + "/Landcover_Z" + str(zone) + ".dbf")
                 )
             else:
-                # landcover_w_path = os.path.join(elsus_weights_path, "Zone1/Landcover_Z1.dbf") # A random file is chosen. At the end
                 # the weights are set to 0 for Zone0
                 landcover_w_path = str(
                     elsus_weights_path / "Zone1/Landcover_Z1.dbf"
-                )  # A random file is chosen. At the end
+                )  # A random file is chosen (in this case Zone1).
+                # which file i is, is not important because at the end
                 # the weights are set to 0 for Zone0
+
             # -- Compute the Rasters
             landcover_dir = landcover_raster_eu(
                 landcover_w_path,
@@ -1576,7 +1690,6 @@ def lsi_core(input_dict: dict) -> None:
 
             # ---- SLOPE and LITHOLOGY ----
             # -- Define weights path
-            # slope_w_path = os.path.join(elsus_weights_path,  str(db_file) + "/Slope_Z" + str(zone) + ".dbf")
             slope_w_path = str(
                 elsus_weights_path / str(str(db_file) + "/Slope_Z" + str(zone) + ".dbf")
             )
@@ -1596,11 +1709,9 @@ def lsi_core(input_dict: dict) -> None:
             slope_list.append(slope_dir)
 
         # Mosaicing the rasters by zone into the complete Raster
-        slope_mosaic_path = mosaicing(
-            slope_list, proj_crs, output_path, "slope_weight.tif"
-        )
+        slope_mosaic_path = mosaicing(slope_list, proj_crs, tmp_dir, "slope_weight")
         landcover_mosaic_path = mosaicing(
-            landcover_list, proj_crs, output_path, "landcover_weight.tif"
+            landcover_list, proj_crs, tmp_dir, "landcover_weight"
         )
 
         slope_tif = rasters.read(slope_mosaic_path)
@@ -1609,16 +1720,17 @@ def lsi_core(input_dict: dict) -> None:
         # Interpolate landcover and geology layers
         landcover_tif = landcover_tif.interp_like(slope_tif, method="nearest")
         geology_tif = geology_tif.interp_like(slope_tif, method="nearest")
-        geology_tif = rasters.collocate(
-            slope_tif, geology_tif, Resampling.bilinear
-        )  # Collocate Geology for LSI computation
+
+        # Collocate Geology for LSI computation
+        geology_tif = rasters.collocate(slope_tif, geology_tif, Resampling.bilinear)
 
         # LSI computation:
         LOGGER.info("-- Computing LSI")
-        fw_dbf = gpd.read_file(global_final_weights_dbf_path)
-        geology_weights = fw_dbf[fw_dbf.Factors == "Geology"].Weights.iloc[0]
-
-        lsi_tif = slope_tif + geology_tif * float(geology_weights) + landcover_tif
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            fw_dbf = gpd.read_file(global_final_weights_dbf_path)
+            geology_weights = fw_dbf[fw_dbf.Factors == "Geology"].Weights.iloc[0]
+            lsi_tif = slope_tif + geology_tif * float(geology_weights) + landcover_tif
 
     elif location == LocationType.GLOBAL.value:
         LOGGER.info("-- LSI - LOCATION : GLOBAL")
@@ -1633,6 +1745,8 @@ def lsi_core(input_dict: dict) -> None:
         landcover_path_dict = {
             LandcoverType.ESAWC.value: DataPath.ESAWC_PATH,
             LandcoverType.CLC.value: DataPath.CLC_PATH,
+            LandcoverType.GLC.value: DataPath.GLC_PATH,
+            LandcoverType.ELC.value: DataPath.ELC_PATH,
         }
 
         lulc_path = landcover_path_dict[landcover_name]
@@ -1646,6 +1760,9 @@ def lsi_core(input_dict: dict) -> None:
         )
 
         dem = dem.rio.write_nodata(FLOAT_NODATA)
+
+        # lulc = rasters.crop(lulc_path, aoi_b)
+        # lulc = rasters.collocate(dem_b, lulc, Resampling.nearest)
         # dem = dem.rio.reproject(
         #     proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
         # )
@@ -1661,32 +1778,35 @@ def lsi_core(input_dict: dict) -> None:
         # momentaneous line to add Not Applicable class
         geology_dbf.loc[len(geology_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
         geology_layer = geology_raster(
-            geology_dbf, litho_shp, dem, aoi, proj_crs, output_path
+            geology_dbf, litho_shp, dem, aoi, proj_crs, tmp_dir
         )
 
         # -- 2. Slope
         slope_dbf = gpd.read_file(slope_dbf_path)
-        slope_layer = slope_raster(slope_dbf, dem_b, aoi, proj_crs, output_path)
+        slope_layer = slope_raster(slope_dbf, dem_b, aoi, proj_crs, tmp_dir)
 
         # -- 3. Landcover
+        lulc = rasters.crop(lulc_path, aoi_b)
+        lulc = rasters.collocate(dem_b, lulc, Resampling.nearest)
         landuse_dbf = gpd.read_file(landuse_dbf_path)
         landuse_dbf.loc[len(landuse_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
         # Landcover
         landuse_layer = landcover_raster(
             landuse_dbf,
-            lulc_path,
+            lulc,
             landcover_name,
             aoi,
             proj_crs,
             output_resolution,
-            output_path,
+            tmp_dir,
         )
+
+        landuse_layer = rasters.crop(landuse_layer, aoi)
+        landuse_layer = landuse_layer.rio.write_nodata(FLOAT_NODATA)
 
         # -- 4. Elevation
         elevation_dbf = gpd.read_file(elevation_dbf_path)
-        elevation_layer = elevation_raster(
-            elevation_dbf, dem_b, aoi, proj_crs, output_path
-        )
+        elevation_layer = elevation_raster(elevation_dbf, dem_b, aoi, proj_crs, tmp_dir)
 
         # -- 5. Hydro
         hydro_dbf = gpd.read_file(hydro_dbf_path)
@@ -1699,12 +1819,11 @@ def lsi_core(input_dict: dict) -> None:
             dem_min,
             output_resolution,
             tmp_dir,
-            output_path,
         )
 
         # -- 6. Aspect
         aspect_dbf = gpd.read_file(aspect_dbf_path)
-        aspect_layer = aspect_raster(aspect_dbf, dem_b, aoi, proj_crs, output_path)
+        aspect_layer = aspect_raster(aspect_dbf, dem_b, aoi, proj_crs, tmp_dir)
 
         # -- Final weights computing
         fw_dbf = gpd.read_file(global_final_weights_dbf_path)
@@ -1721,14 +1840,12 @@ def lsi_core(input_dict: dict) -> None:
         LOGGER.info("-- Computing LSI")
 
         # Read layers
-        slope_layer = rasters.read(os.path.join(output_path, "slope_weight.tif"))
-        geology_layer = rasters.read(os.path.join(output_path, "geology_weight.tif"))
-        elevation_layer = rasters.read(
-            os.path.join(output_path, "elevation_weight.tif")
-        )
-        aspect_layer = rasters.read(os.path.join(output_path, "aspect_weight.tif"))
-        landuse_layer = rasters.read(os.path.join(output_path, "landcover_weight.tif"))
-        hydro_layer = rasters.read(os.path.join(output_path, "hydro_weight.tif"))
+        slope_layer = rasters.read(os.path.join(tmp_dir, "slope_weight.tif"))
+        geology_layer = rasters.read(os.path.join(tmp_dir, "geology_weight.tif"))
+        elevation_layer = rasters.read(os.path.join(tmp_dir, "elevation_weight.tif"))
+        aspect_layer = rasters.read(os.path.join(tmp_dir, "aspect_weight.tif"))
+        landuse_layer = rasters.read(os.path.join(tmp_dir, "landcover_weight.tif"))
+        hydro_layer = rasters.read(os.path.join(tmp_dir, "hydro_weight.tif"))
 
         # Collocate layers
 
@@ -1751,14 +1868,8 @@ def lsi_core(input_dict: dict) -> None:
             + hydro_layer * float(hydro_weights)
         )
 
-    # Clean errors in LSI due to reprojection [?]
-
     # Fix coordinates
     lsi_tif = lsi_tif.rio.write_crs(proj_crs, inplace=True)
-    # lsi_tif = rasters.collocate(  rasters.read(os.path.join(output_path, "aspect_weight.tif"))
-    #                             , lsi_tif
-    #                             , Resampling.bilinear)
-    # lsi_tif = lsi_tif.rio.write_nodata(np.nan, encoded=True)
     lsi_tif = rasters.crop(lsi_tif, aoi)
     lsi_tif = xr.where(
         lsi_tif > 10, np.nan, lsi_tif
@@ -1768,26 +1879,43 @@ def lsi_core(input_dict: dict) -> None:
     )  # There should not be negative values (border effect)
     lsi_tif = lsi_tif.rio.write_crs(proj_crs, inplace=True)
 
+    # Write in memory unclassified
+    rasters.write(lsi_tif, os.path.join(tmp_dir, "lsi_unclassified.tif"))
+
     # -- LSI reclassification
     # 1 to 5
     LOGGER.info("-- Reclassification of LSI in 5 vulnerability classes")
-    lsi_reclass = produce_a_reclass_arr(lsi_tif, downsample_factor=300)
 
-    # Vectorizing
-    lsi_reclass_vector = rasters.vectorize(lsi_reclass)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
 
-    # Delete class 6 for values above the max value of LSI
-    lsi_reclass_vector_c = lsi_reclass_vector[lsi_reclass_vector["raster_val"] != 6]
+        lsi_reclass = produce_a_reclass_arr(lsi_tif, downsample_factor=450)
 
-    # Going back to raster
-    lsi_reclass_tif = rasters.rasterize(
-        lsi_tif, lsi_reclass_vector_c, value_field="raster_val"
-    )
+        # Vectorizing
+        lsi_reclass_vector = rasters.vectorize(lsi_reclass)
+
+        # Delete class 6 for values above the max value of LSI
+        lsi_reclass_vector_c = lsi_reclass_vector[lsi_reclass_vector["raster_val"] != 6]
+
+        # Going back to raster
+        lsi_reclass_tif = rasters.rasterize(
+            lsi_tif, lsi_reclass_vector_c, value_field="raster_val"
+        )
+
+        lsi_reclass_tif = rasters.crop(lsi_reclass_tif, aoi)
+        lsi_reclass_tif = xr.where(
+            lsi_reclass_tif == 0, np.nan, lsi_reclass_tif
+        )  # There should not be 0 values for classes) (border effect)
+        lsi_reclass_tif = lsi_reclass_tif.rio.write_crs(proj_crs, inplace=True)
 
     LOGGER.info("-- Writing lsi.tif in memory")
 
     # Write in memory
     rasters.write(lsi_reclass_tif, os.path.join(output_path, "lsi.tif"))
+
+    if not temp:
+        LOGGER.info("-- Deleting temporary files")
+        shutil.rmtree(tmp_dir)
 
     return
     # raise NotImplementedError

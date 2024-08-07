@@ -16,30 +16,82 @@ This Index is estimated by a combination of data sources that includes the asses
 * Land use and land cover (LULC)
 * Distance from drainage network
 
-There are two available methods (Global and Europe). The Global method is based on the use of all previous data sources, the Europe method on the other side only considers the following data:
+There are two available methods (Global and Europe).
+
+The Global method is based on the use of all previous data sources, the Europe method on the other side only considers the following data:
 * Geology/Lithology
 * Terrain Slope
 * Land use and land cover (LULC)
 
+> The Global method is based on a multi-criteria analysis for landslide suceptibility available at:
+> : [(Vojteková et al. 2020)](https://www.tandfonline.com/doi/full/10.1080/19475705.2020.1713233)
+
 > The Europe method uses the division by Climate-physiographically differentiated zones used for the susceptibility ELSUS map.
-> For more information: [ELSUS susceptibility map](https://publications.jrc.ec.europa.eu/repository/handle/JRC91935).
+> For more information: [(Gunther et al. 2014)](https://publications.jrc.ec.europa.eu/repository/handle/JRC91935)
 
 The minimum requirement for the LSI calculation is:
 * AOI
-* DEM
-* Landcover
 * Output path
+
+with a DEM and a Landcover already set as default.
 
 # ArcGIS Pro inputs:
 
-TODO
+### Basic inputs
+
+**Aoi** (mandatory)
+
+AOI path (shapefile, geojson, kml) or WKT strings.
+
+**Location**
+
+Location of the AOI. Used to define a methodology
+Can be :
+
+"Europe" : AOI located in Europe |
+"Global" : AOI located outside Europe
+
+Default: Global
+
+**Output Folder** (mandatory)
+
+Path to the output folder.
+
+### Advanced
+
+**Landcover**
+
+Name of the Landcover that will be used.
+Can be :
+
+"Corine Land Cover - 2018 (100m)" | 
+"Global Land Cover - Copernicus 2019 (100m)"
+
+**DEM**
+
+The DEM is used if the LS raster is not provided.
+Can be :
+
+"COPDEM 30m" |
+"FABDEM" |
+"Other" : A DEM other than those listed above. Need to be load in the "DEM raster" parameter
+
+Default: "COPDEM 30m"
+
+**Output resolution**
+
+Resolution of the output raster in the unit of the output coordinate system.
+
+Default : 30 meters
+
+![alt text](Arcgispro_toolbox.png)
 
 ## Run from the command line
 
+This tool is also usable by command line:
+
 ```text
 Usage: lsi.py [OPTIONS]
-
-  [Description TODO]
 
 +- Options -------------------------------------------------------------------+
 | *  --aoi               -aoi        PATH                 AOI (shp, geojson)  |
@@ -48,14 +100,18 @@ Usage: lsi.py [OPTIONS]
 |    --location          -loc        [Europe|Global]      Location of the AOI |
 |                                                         [default: Global]   |
 |    --dem_name          -dem        [COPDEM              DEM Name needed     |
-|                                    30m|FABDEM|SRTM      [default: COPDEM    |
-|                                    30m|Other]           30m]                |
+|                                    30m|FABDEM|Other]    [default: COPDEM    |
+|                                                         30m]                |
 |    --other_dem         -demp       PATH                 DEM path if dem =   |
 |                                                         Other               |
 |    --landcover_name    -lulc       [ESA WorldCover -    Land Cover Name     |
 |                                    2021 (10m)|Corine    [default: ESA       |
 |                                    Land Cover - 2018    WorldCover - 2021   |
-|                                    (100m)]              (10m)]              |
+|                                    (100m)|Global Land   (10m)]              |
+|                                    Cover - Copernicus                       |
+|                                    2019 (100m)|ESRI                         |
+|                                    Annual Land Cover                        |
+|                                    2021 (10m)]                              |
 |    --europe_method     -eu_method  [Refined|Fast]       if LOCATION =       |
 |                                                         EUROPE, choose      |
 |                                                         whether you want a  |
@@ -67,7 +123,7 @@ Usage: lsi.py [OPTIONS]
 |                                                         refined LSI         |
 |                                                         computation         |
 |                                                         [default: Refined]  |
-|    --output_resoluti▒  -res        INTEGER RANGE        Output resolution.  |
+|    --output_resolution  -res       INTEGER RANGE        Output resolution. |
 |                                    [1<=x<=1000]         Taking from DEM if  |
 |                                                         not provided        |
 |    --epsg_code         -epsg       INTEGER RANGE        EPSG code, 4326 is  |
@@ -82,6 +138,13 @@ Usage: lsi.py [OPTIONS]
 |                                                         run on the ftep     |
 |                                                         platform.           |
 |                                                         [default: False]    |
+|    --temp                                               Set this flag False |
+|                                                         if you don't want   |
+|                                                         to keep temporary   |
+|                                                         files (geology,     |
+|                                                         aspect, slope,      |
+|                                                         etc).               |
+|                                                         [default: True]     |
 |    --help              -h                               Show this message   |
 |                                                         and exit.           |
 +-----------------------------------------------------------------------------+

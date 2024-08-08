@@ -41,16 +41,14 @@ from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
     "-loc",
     "--location",
     help="Location of the AOI",
-    type=click.Choice(["Europe", "Global"]),  # to be added maybe Europe/Global_Legacy
+    type=click.Choice(["Europe", "Global"]),
     default="Global",
 )
 @click.option(
     "-dem",
     "--dem_name",
     help="DEM Name needed",
-    type=click.Choice(
-        ["COPDEM 30m", "FABDEM", "Other"]
-    ),  # "EUDEM 25m" ,  "MERIT 5 deg"
+    type=click.Choice(["COPDEM 30m", "FABDEM", "Other"]),
     default="COPDEM 30m",
     show_default=True,
 )
@@ -69,8 +67,7 @@ from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
             "ESA WorldCover - 2021 (10m)",
             "Corine Land Cover - 2018 (100m)",
             "Global Land Cover - Copernicus 2019 (100m)",
-            "ESRI Annual Land Cover 2021 (10m)",
-            # "P03",
+            # "ESRI Annual Land Cover 2021 (10m)",
         ]
     ),
     default="ESA WorldCover - 2021 (10m)",
@@ -83,7 +80,7 @@ from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
     type=click.Choice(
         [
             "Refined",
-            "Fast",  # ELSUS layer
+            "Fast",  # this corresponds to the use of the ELSUS layer directly with a resampling applied
         ]
     ),
     default="Refined",
@@ -93,7 +90,7 @@ from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
     "--output_resolution",
     help="Output resolution. Taking from DEM if not provided",
     type=click.IntRange(min=1, max=1000),
-    #    default=30,
+    default=10,
 )
 @click.option(
     "-epsg",

@@ -12,22 +12,33 @@ You should have received a copy of the GNU General Public License along with LSI
 
 """ Utils """
 
-
-from enum import Enum  # , unique
-from typing import Optional, Union  # , Any, Callable
+import os
+from enum import Enum
+from typing import Optional, Union
 
 import dask.array as da
 import geopandas as gpd
 import jenkspy
 import numpy as np
 import rasterio
+import rasterio as rio
 import xarray as xr
 from rasterio.enums import Resampling
-
-# from sertit import AnyPath, geometry, rasters, rasters_rio, unistra, vectors
-from sertit import rasters
-from sertit.types import AnyPathType  # ,AnyPathStrType
+from rasterio.merge import merge
+from sertit import AnyPath, rasters
+from sertit.types import AnyPathType
 from whitebox import WhiteboxTools
+
+
+class RoutingAlgorithm(Enum):
+    D8 = "d8"
+    DINF = "dinf"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+PATH_ARR_DS = Union[str, tuple, rasterio.DatasetReader]
 
 
 def classify_raster(raster, raster_steps, raster_classes):
@@ -119,18 +130,7 @@ def initialize_whitebox_tools(
     return wbt
 
 
-class RoutingAlgorithm(Enum):
-    D8 = "d8"
-    DINF = "dinf"
-
-    def __str__(self) -> str:
-        return self.value
-
-
 # Extracted from hillshade function from sertit package
-PATH_ARR_DS = Union[str, tuple, rasterio.DatasetReader]
-
-
 def aspect(ds: PATH_ARR_DS, proj_crs):
     """
     This function was extracted from the hillshade function available at the sertit package
@@ -270,3 +270,45 @@ def produce_a_reclass_arr(a_xarr, downsample_factor=200):
         a_reclass_arr = da.where(condition, choice, a_reclass_arr)
 
     return a_xarr.copy(data=a_reclass_arr)
+
+
+def mosaicing(raster_list, proj_crs, output_path, name):
+    """
+    This function allows to mosaic the rasters by zone
+    Args:
+        raster_list: list of xarrays
+        proj_crs: CRS
+        output_path: Path to be written the new raster
+        name: str, name for the raster
+    Returns:
+        Path for the Mosaic raster in xarray format
+    """
+    src_files_to_mosaic = []
+    for raster_path in raster_list:
+        src = rio.open(raster_path)
+        src_files_to_mosaic.append(src)
+    # Merge the rasters
+    mosaic, out_trans = merge(src_files_to_mosaic)
+
+    # Copy the metadata
+    out_meta = src_files_to_mosaic[0].meta.copy()
+    out_meta.update(
+        {
+            "driver": "GTiff",
+            "height": mosaic.shape[1],
+            "width": mosaic.shape[2],
+            "transform": out_trans,
+            "crs": proj_crs,
+        }
+    )
+
+    output_path = os.path.join(output_path, AnyPath(str(name) + "_mosaic.tif"))
+
+    with rio.open(output_path, "w", **out_meta) as dest:
+        dest.write(mosaic)
+
+    # Close all source files
+    for src in src_files_to_mosaic:
+        src.close()
+
+    return output_path

@@ -29,11 +29,17 @@ The Global method is based on the use of all previous data sources, the Europe m
 > The Europe method uses the division by Climate-physiographically differentiated zones used for the susceptibility ELSUS map.
 > For more information: [(Gunther et al. 2014)](https://publications.jrc.ec.europa.eu/repository/handle/JRC91935)
 
+
+
 The minimum requirement for the LSI calculation is:
 * AOI
 * Output path
 
 with a DEM and a Landcover already set as default.
+
+> <span style="color:red">**Important note:**</span> A consideration to bare in mind is that the *European method* does not comprise overseas departments and regions such as the Madeira Island for Portugal, Guyane or La Réunion for France or even Ceuta for Spain (just to mention a few), with the single exception of the **Faroes Islands (Denmark)**. On the other side, countries like **Malta**, **Cyprus**, and **Iceland** which represent further or smaller island states are well included. Image below for reference:
+
+![Scope of the European method ](image-1.png)
 
 # ArcGIS Pro inputs:
 
@@ -45,11 +51,10 @@ AOI path (shapefile, geojson, kml) or WKT strings.
 
 **Location**
 
-Location of the AOI. Used to define a methodology
-Can be :
+Location of the AOI. Used to define a methodology.
 
-"Europe" : AOI located in Europe |
-"Global" : AOI located outside Europe
+* Europe: AOI located in Europe
+* Global: AOI located outside Europe
 
 Default: Global
 
@@ -61,20 +66,21 @@ Path to the output folder.
 
 **Landcover**
 
-Name of the Landcover that will be used.
-Can be :
+Name of the Landcover that will be used, with the following options:
 
-"Corine Land Cover - 2018 (100m)" | 
-"Global Land Cover - Copernicus 2019 (100m)"
+* Corine Land Cover - 2018 (100m)
+* Global Land Cover - Copernicus 2019 (100m)
+* ESA WorldCover - 2021 (10m)
+
+Default: "ESA WorldCover - 2021 (10m)"
 
 **DEM**
 
-The DEM is used if the LS raster is not provided.
-Can be :
+Name of the DEM to be used.
 
-"COPDEM 30m" |
-"FABDEM" |
-"Other" : A DEM other than those listed above. Need to be load in the "DEM raster" parameter
+* COPDEM 30m"
+* FABDEM"
+* Other: A DEM other than those listed above. Need to be load in the "DEM raster" parameter
 
 Default: "COPDEM 30m"
 
@@ -84,7 +90,7 @@ Resolution of the output raster in the unit of the output coordinate system.
 
 Default : 30 meters
 
-![alt text](Arcgispro_toolbox.png)
+![alt text](Arcgispro_lsi_toolbox.png)
 
 ## Run from the command line
 
@@ -109,9 +115,7 @@ Usage: lsi.py [OPTIONS]
 |                                    Land Cover - 2018    WorldCover - 2021   |
 |                                    (100m)|Global Land   (10m)]              |
 |                                    Cover - Copernicus                       |
-|                                    2019 (100m)|ESRI                         |
-|                                    Annual Land Cover                        |
-|                                    2021 (10m)]                              |
+|                                    2019 (100m)]                             |
 |    --europe_method     -eu_method  [Refined|Fast]       if LOCATION =       |
 |                                                         EUROPE, choose      |
 |                                                         whether you want a  |
@@ -123,9 +127,11 @@ Usage: lsi.py [OPTIONS]
 |                                                         refined LSI         |
 |                                                         computation         |
 |                                                         [default: Refined]  |
-|    --output_resolution  -res       INTEGER RANGE        Output resolution. |
+|    --output_resolution  -res        INTEGER RANGE       Output resolution.  |
 |                                    [1<=x<=1000]         Taking from DEM if  |
 |                                                         not provided        |
+|                                                         [default: 10;       |
+|                                                         1<=x<=1000]         |
 |    --epsg_code         -epsg       INTEGER RANGE        EPSG code, 4326 is  |
 |                                    [1024<=x<=32767]     not accepted. By    |
 |                                                         default, it is the  |
@@ -148,8 +154,6 @@ Usage: lsi.py [OPTIONS]
 |    --help              -h                               Show this message   |
 |                                                         and exit.           |
 +-----------------------------------------------------------------------------+
-
-
 ```
 
 
@@ -158,7 +162,7 @@ Example for running the tool from the command line:
 Global
 
 ```shell
-python lsi.py -aoi "\\path\to\aoi_venezuela.shp" -loc "Global" -dem "COPDEM 30m" -lulc "ESA Worldcover - 2021 (10m)" -res 30 -out "\\path\to\output_folder"
+python lsi.py -aoi "\\path\to\aoi_caracas.shp" -loc "Global" -dem "COPDEM 30m" -lulc "ESA Worldcover - 2021 (10m)" -res 30 -out "\\path\to\output_folder"
 ```
 
 Europe

@@ -68,6 +68,7 @@ class Lsi(object):
         landcover.filter.list = [
             "ESA WorldCover - 2021 (10m)",
             "Corine Land Cover - 2018 (100m)",
+            "Global Land Cover - Copernicus 2019 (100m)",
         ]
         landcover.value = "ESA WorldCover - 2021 (10m)"
         # 4. DEM
@@ -81,11 +82,11 @@ class Lsi(object):
         )
 
         dem.filter.type = "ValueList"
-        dem.filter.list = ["COPDEM 30m", "FABDEM", "SRTM 30m", "Other"]
+        dem.filter.list = ["COPDEM 30m", "FABDEM", "Other"]
         dem.value = "COPDEM 30m"
         # 5. Dem Raster path
         dem_raster_path = arcpy.Parameter(
-            displayName="Dem Raster",
+            displayName="Dem raster",
             name="dem_raster",
             datatype="DEFile",
             parameterType="Optional",
@@ -103,7 +104,7 @@ class Lsi(object):
         output_resolution.value = 30
         # 7. Output folder
         output_folder = arcpy.Parameter(
-            displayName="Output Folder",
+            displayName="Output folder",
             name="output_folder",
             datatype="DEFolder",
             parameterType="Required",

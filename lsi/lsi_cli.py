@@ -116,6 +116,12 @@ from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
     help="Set this flag False if you don't want to keep temporary files (geology, aspect, slope, etc). ",
     default=True,
 )
+@click.option(
+    "--jenks",
+    help="Set this flag if you want to apply a jenks breaks into 5 LSI classes (It might run for longer time as it's an expensive computation). ",
+    default=True,
+)
+
 def compute_lsi(
     aoi,
     location,
@@ -128,6 +134,7 @@ def compute_lsi(
     output_path,
     ftep,
     temp,
+    jenks,
 ):
     logs.init_logger(LOGGER, logging.INFO, LOGGING_FORMAT)
     LOGGER.info("--- LSI ---")
@@ -145,6 +152,7 @@ def compute_lsi(
             InputParameters.REF_EPSG.value: epsg_code,
             InputParameters.OUTPUT_DIR.value: output_path,
             InputParameters.TEMP.value: temp,
+            InputParameters.JENKS.value: jenks,
         }
         DataPath.load_paths(ftep)
 

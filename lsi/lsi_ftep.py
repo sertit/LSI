@@ -58,6 +58,7 @@ def compute_lsi():
         InputParameters.REF_EPSG.value: None,
         InputParameters.OUTPUT_DIR.value: "/home/worker/workDir/outDir/output",
         InputParameters.TEMP.value: False,
+        InputParameters.JENKS.value: True,
     }
     DataPath.load_paths(ftep=True)
 

@@ -35,15 +35,20 @@ from lsi.src.lsi_calculator import (
     hydro_raster,
     landcover_raster,
     landcover_raster_eu,
+    # lithology_raster_eu,
     slope_raster,
     slope_raster_eu,
 )
 from lsi.src.reclass import LandcoverType
-from lsi.src.utils import mosaicing, produce_a_reclass_arr
+from lsi.src.utils import (
+    mosaicing,
+    produce_a_reclass_arr,
+    raster_postprocess,
+)
 
 DEBUG = False
 LOGGING_FORMAT = "%(asctime)s - [%(levelname)s] - %(message)s"
-LOGGER = logging.getLogger("LSI")  # on the meantime to solve the acces to lsi.py
+LOGGER = logging.getLogger("LSI")
 
 REGULAR_BUFFER = 1000
 
@@ -113,8 +118,12 @@ class DataPath:
             / "ELSUSv2_six_datasets"
             / "climate_phys_regions.shp"
         )
-
-
+        cls.LITHOLOGY_ELSUS_PATH = (
+            cls.GLOBAL_DIR
+            / "ELSUSv2"
+            / "ELSUSv2_six_datasets"
+            / "lithology_epsg4326.tif"
+        )
 @unique
 class InputParameters(ListEnum):
     """
@@ -132,6 +141,7 @@ class InputParameters(ListEnum):
     OUTPUT_DIR = "output_path"
     TMP_DIR = "temp_dir"
     TEMP = "temp"
+    JENKS = "jenks_break"
 
 
 @unique
@@ -160,8 +170,6 @@ class DemType(ListEnum):
     List of the DEM
     """
 
-    #    EUDEM = "EUDEM 25m"
-    #    MERIT = "MERIT 5 deg"
     COPDEM_30 = "COPDEM 30m"
     FABDEM = "FABDEM"
     OTHER = "Other"
@@ -196,11 +204,7 @@ def check_parameters(input_dict: dir) -> None:
     location = input_dict.get(InputParameters.LOCATION)
     dem_name = input_dict.get(InputParameters.DEM_NAME.value)
     other_dem_path = input_dict.get(InputParameters.OTHER_DEM_PATH.value)
-    # lithology_path = input_dict.get(InputParameters.LITHOLOGY_PATH.value)
     landcover_name = input_dict.get(InputParameters.LANDCOVER_NAME.value)
-    # weights_path = input_dict.get(InputParameters.WEIGHTS_PATH.value)
-    # epsg_code = input_dict.get(InputParameters.REF_EPSG.value)
-    # output_path = input_dict.get(InputParameters.OUTPUT_DIR.value)
 
     # Check if other_dem_path is needed
     if (dem_name == DemType.OTHER.value) and (other_dem_path is None):
@@ -211,9 +215,7 @@ def check_parameters(input_dict: dir) -> None:
         raise ValueError(
             f'{"Corine Land Cover can not be used for GLOBAL calculations, only in Europe !"}'
         )
-    # if landcover_name != LandcoverType.CLC.value and landcover_name != LandcoverType.CLC.value:
-    #     raise ValueError(f"The Landcover was not found with the following name ({landcover_name}) was not identified, please check whether you have written the correct Landcover name!")
-
+    
     return
 
 
@@ -235,11 +237,9 @@ def lsi_core(input_dict: dict) -> None:
         copmputation
     """
     # --- Check parameters ---
-
     check_parameters(input_dict)
 
     # --- Extract parameters ---
-
     aoi_path = input_dict.get(InputParameters.AOI_PATH.value)
     location = input_dict.get(InputParameters.LOCATION.value)
     dem_name = input_dict.get(InputParameters.DEM_NAME.value)
@@ -250,6 +250,7 @@ def lsi_core(input_dict: dict) -> None:
     epsg_code = input_dict.get(InputParameters.REF_EPSG.value)
     output_path = input_dict.get(InputParameters.OUTPUT_DIR.value)
     temp = input_dict.get(InputParameters.TEMP.value)
+    jenks_break = input_dict.get(InputParameters.JENKS.value)
 
     # Define folder for temporal files
     tmp_dir = os.path.join(output_path, "temp_dir")
@@ -272,8 +273,8 @@ def lsi_core(input_dict: dict) -> None:
         aoi = aoi.set_crs(proj_crs, allow_override=True)
         aoi = aoi.to_crs(proj_crs)
 
-    # --- Define standard paths for both locations EUROPE and GLOBAL
-    lithology_path = str(DataPath.LITHOLOGY_PATH)
+    # --- ## Define standard paths for both locations EUROPE and GLOBAL ## ---
+    # lithology_path = str(DataPath.LITHOLOGY_PATH)
 
     #  Dict that store dem name and dem path
     dem_path_dict = {
@@ -286,7 +287,6 @@ def lsi_core(input_dict: dict) -> None:
 
     # Reading and Checking errors in DEM
     try:
-        # buffer = 500  # A buffer that will work for all processes. (Can be recropped depending on the need)
         aoi_b = geometry.buffer(aoi, REGULAR_BUFFER)
         dem_b = rasters.crop(dem_path, aoi_b)
     except ValueError:
@@ -323,8 +323,12 @@ def lsi_core(input_dict: dict) -> None:
     dem_b = dem_b.rio.write_nodata(FLOAT_NODATA)
     rasters.write(dem_b, AnyPath(tmp_dir) / "dem_b.tif")
 
-    # -- DEFINING WEIGHT DBF PATHS ONLY:
+    # -- DEFINING WEIGHT DBF PATHs and LITHOLOGY PATH:
     if location == LocationType.EUROPE.value:
+        # Define lithology
+        lithology_path = str(DataPath.LITHOLOGY_PATH)
+        # lithology_path = str(DataPath.LITHOLOGY_ELSUS_PATH)
+
         # Define inputs for ELSUS (inside of Europe) method
         physio_zones_path = str(DataPath.ELSUS_ZONES_PATH)
 
@@ -342,6 +346,10 @@ def lsi_core(input_dict: dict) -> None:
         )
 
     elif location == LocationType.GLOBAL.value:
+        # Define lithology
+        lithology_path = str(DataPath.LITHOLOGY_PATH)
+
+        # Define weights path
         geology_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Geology.dbf")
         slope_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Slope.dbf")
         elevation_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Elevation.dbf")
@@ -401,17 +409,15 @@ def lsi_core(input_dict: dict) -> None:
         LOGGER.info("-- Crop DEM")
         dem = rasters.crop(dem_b, aoi)
 
-        # -- 1. Geology
+        # -- 1. Geology (to be erased for new Lithoology dataset)
+
         # Reading geology database, clip to aoi and reproject to proj_crs
         litho_db = gpd.read_file(lithology_path, driver="FileGDB", mask=aoi)
-        LOGGER.info("-- AOI to litho_db crs")
         aoi_db = aoi.to_crs(litho_db.crs)
         litho_shp = gpd.clip(litho_db, aoi_db)
-        LOGGER.info("-- Litho shp to proj_crs")
         litho_shp = litho_shp.to_crs(proj_crs)
 
         geology_dbf = gpd.read_file(geology_dbf_path)
-        # momentaneous line to add Not Applicable class
         geology_dbf.loc[len(geology_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
         geology_tif = geology_raster(
             geology_dbf, litho_shp, dem, aoi, proj_crs, tmp_dir
@@ -439,15 +445,19 @@ def lsi_core(input_dict: dict) -> None:
 
         LOGGER.info(
             str(
-                "-- Produce the Land use and Slope raster for the LSI model | Amount of sub-zones to be processed: "
+                "-- Produce the Landuse, Slope and Lithology raster for the LSI model | Amount of sub-zones to be processed: "
                 + str(physio_zones_aoi["Zone"].count())
             )
         )
 
         # A counter i is set to separate polygons from the same Zone
         i = 0
+
+        # The following loop crops the rasters by each physiographical zone in the AOI and stores the path of each
+        # raster in the lists below
         landcover_list = []
         slope_list = []
+        lithology_list = []
         for _, row in physio_zones_aoi.iterrows():
             i += 1
             # The Climatic Zone
@@ -471,8 +481,7 @@ def lsi_core(input_dict: dict) -> None:
                     / str(str(db_file) + "/Landcover_Z" + str(zone) + ".dbf")
                 )
             else:  # the weights are set to 0 for Zone0
-                # A random file is chosen (in this case Zone1).
-                # which file i is, is not important because at the end
+                # A random file is chosen (in this case Zone1). which file i is, is not important because at the end
                 # the weights are set to 0 for Zone0
                 landcover_w_path = str(elsus_weights_path / "Zone1/Landcover_Z1.dbf")
 
@@ -492,7 +501,7 @@ def lsi_core(input_dict: dict) -> None:
             )
             landcover_list.append(landcover_dir)
 
-            # ---- SLOPE and LITHOLOGY ----
+            # ---- SLOPE CASE ----
             # -- Define weights path
             slope_w_path = str(
                 elsus_weights_path / str(str(db_file) + "/Slope_Z" + str(zone) + ".dbf")
@@ -509,21 +518,45 @@ def lsi_core(input_dict: dict) -> None:
                 tmp_dir,
                 output_resolution,
             )
-
             slope_list.append(slope_dir)
 
-        # Mosaicing the rasters by zone into the complete Raster
+            # ---- LITHOLOGY CASE ----
+            # -- Define weights path
+            # lithology_w_path = str(
+            #     elsus_weights_path / str(str(db_file) + "/Lithology_Z" + str(zone) + ".dbf")
+            # )
+            # # -- Compute the Rasters
+            # lithology_dir = lithology_raster_eu(
+            #     lithology_w_path,
+            #     lithology_path,
+            #     zone_geom,
+            #     proj_crs,
+            #     zone,
+            #     i,
+            #     fw_dbf,
+            #     tmp_dir,
+            #     output_resolution,
+            # )
+            # lithology_list.append(lithology_dir)
+
+        # Mosaicing the rasters by zone available in the lists previously mentioned
         slope_mosaic_path = mosaicing(slope_list, proj_crs, tmp_dir, "slope_weight")
         landcover_mosaic_path = mosaicing(
             landcover_list, proj_crs, tmp_dir, "landcover_weight"
         )
+        # lithology_mosaic_path = mosaicing(
+        #     lithology_list, proj_crs, tmp_dir, "lithology_weight"
+        # )
 
-        slope_tif = rasters.read(slope_mosaic_path)
-        landcover_tif = rasters.read(landcover_mosaic_path)
+        # Read the mosaiced rasters
+        slope_tif = rasters.crop(slope_mosaic_path, aoi)
+        landcover_tif = rasters.crop(landcover_mosaic_path, aoi)
+        # lithology_tif = rasters.crop(lithology_mosaic_path, aoi)
 
-        # Interpolate landcover and geology layers
+        # Interpolate landcover and lithology layers to be equivalent to Slope layer
         landcover_tif = landcover_tif.interp_like(slope_tif, method="nearest")
         geology_tif = geology_tif.interp_like(slope_tif, method="nearest")
+        # lithology_tif = lithology_tif.interp_like(slope_tif, method="nearest")
 
         # Collocate Geology for LSI computation
         geology_tif = rasters.collocate(slope_tif, geology_tif, Resampling.bilinear)
@@ -535,10 +568,10 @@ def lsi_core(input_dict: dict) -> None:
             fw_dbf = gpd.read_file(global_final_weights_dbf_path)
             geology_weights = fw_dbf[fw_dbf.Factors == "Geology"].Weights.iloc[0]
             lsi_tif = slope_tif + geology_tif * float(geology_weights) + landcover_tif
+            # lsi_tif = slope_tif + lithology_tif + landcover_tif
 
     elif location == LocationType.GLOBAL.value:
         LOGGER.info("-- LSI - LOCATION : GLOBAL")
-        # Print general information about CRS and Resolution
         LOGGER.info(
             "-- LSI - CRS: "
             + str(proj_crs)
@@ -552,7 +585,6 @@ def lsi_core(input_dict: dict) -> None:
             LandcoverType.GLC.value: DataPath.GLC_PATH,
             LandcoverType.ELC.value: DataPath.ELC_PATH,
         }
-
         lulc_path = landcover_path_dict[landcover_name]
 
         # 0. DEM
@@ -588,7 +620,7 @@ def lsi_core(input_dict: dict) -> None:
         lulc = rasters.crop(lulc_path, aoi_b)
         lulc = rasters.collocate(dem_b, lulc, Resampling.nearest)
 
-        # Reade landuse weights
+        # Read landuse weights
         landuse_dbf = gpd.read_file(landuse_dbf_path)
         landuse_dbf.loc[len(landuse_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
 
@@ -602,7 +634,6 @@ def lsi_core(input_dict: dict) -> None:
             output_resolution,
             tmp_dir,
         )
-
         landuse_layer = rasters.crop(landuse_layer, aoi)
         landuse_layer = landuse_layer.rio.write_nodata(FLOAT_NODATA)
 
@@ -685,36 +716,41 @@ def lsi_core(input_dict: dict) -> None:
     # Write in memory LSI with unclassified values
     rasters.write(lsi_tif, os.path.join(tmp_dir, "lsi_unclassified.tif"))
 
-    # -- LSI reclassification
-    # 1 to 5
-    LOGGER.info("-- Reclassification of LSI in 5 vulnerability classes")
+    if jenks_break: # Apply jenks only if user requires it (this option takes a longer time)
+        # -- LSI reclassification: 1 to 5
+        LOGGER.info("-- Reclassification of LSI in 5 vulnerability classes")
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
 
-        lsi_reclass = produce_a_reclass_arr(lsi_tif, downsample_factor=450)
+            lsi_reclass = produce_a_reclass_arr(lsi_tif, downsample_factor=450)
 
-        # Vectorizing
-        lsi_reclass_vector = rasters.vectorize(lsi_reclass)
+            # Vectorizing
+            lsi_reclass_vector = rasters.vectorize(lsi_reclass)
 
-        # Delete class 6 for values above the max value of LSI
-        lsi_reclass_vector_c = lsi_reclass_vector[lsi_reclass_vector["raster_val"] != 6]
+            # Delete class 6 for values above the max value of LSI
+            lsi_reclass_vector_c = lsi_reclass_vector[lsi_reclass_vector["raster_val"] != 6]
 
-        # Going back to raster
-        lsi_reclass_tif = rasters.rasterize(
-            lsi_tif, lsi_reclass_vector_c, value_field="raster_val"
-        )
+            # Going back to raster
+            lsi_reclass_tif = rasters.rasterize(
+                lsi_tif, lsi_reclass_vector_c, value_field="raster_val"
+            )
 
-        lsi_reclass_tif = rasters.crop(lsi_reclass_tif, aoi)
-        lsi_reclass_tif = xr.where(
-            lsi_reclass_tif == 0, np.nan, lsi_reclass_tif
-        )  # There should not be 0 values for classes) (border effect)
-        lsi_reclass_tif = lsi_reclass_tif.rio.write_crs(proj_crs, inplace=True)
+            lsi_reclass_tif = rasters.crop(lsi_reclass_tif, aoi)
+            lsi_reclass_tif = xr.where(
+                lsi_reclass_tif == 0, np.nan, lsi_reclass_tif
+            )  # There should not be 0 values for classes) (border effect)
+            lsi_tif = lsi_reclass_tif.rio.write_crs(proj_crs, inplace=True)
 
-    LOGGER.info("-- Writing lsi.tif in memory")
+    # Post-processing
+    # Currently there is an error with the sieving
+    lsi_tif_sieved, lsi_vector = raster_postprocess(lsi_tif)
+
+    LOGGER.info("-- Writing LSI in memory")
 
     # Write in memory
-    rasters.write(lsi_reclass_tif, os.path.join(output_path, "lsi.tif"))
+    rasters.write(lsi_tif, os.path.join(output_path, "lsi.tif"))
+    vectors.write(lsi_vector, os.path.join(output_path, "lsi.shp"))
 
     if not temp:
         LOGGER.info("-- Deleting temporary files")

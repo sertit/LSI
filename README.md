@@ -37,9 +37,10 @@ The minimum requirement for the LSI calculation is:
 
 with a DEM and a Landcover already set as default.
 
-> <span style="color:red">**Important note:**</span> A consideration to bare in mind is that the *European method* does not comprise overseas departments and regions such as the Madeira Island for Portugal, Guyane or La Réunion for France or even Ceuta for Spain (just to mention a few), with the single exception of the **Faroes Islands (Denmark)**. On the other side, countries like **Malta**, **Cyprus**, and **Iceland** which represent further or smaller island states are well included. Image below for reference:
+> :information_source: **Note to consider:**
+>  Is important to bare in mind that the *European method* does not comprise overseas departments and regions such as the Madeira Island for Portugal, Guyane or La Réunion for France or even Ceuta for Spain (just to mention a few), with the single exception of the **Faroes Islands (Denmark)**. On the other side, countries like **Cyprus**, **Malta** and **Iceland** which represent further or smaller island states are well included. Image below for reference:
 
-![Scope of the European method ](image-1.png)
+![Scope of the European method ](Scope_european_method.png)
 
 # ArcGIS Pro inputs:
 
@@ -78,8 +79,8 @@ Default: "ESA WorldCover - 2021 (10m)"
 
 Name of the DEM to be used.
 
-* COPDEM 30m"
-* FABDEM"
+* COPDEM 30m
+* FABDEM
 * Other: A DEM other than those listed above. Need to be load in the "DEM raster" parameter
 
 Default: "COPDEM 30m"
@@ -127,7 +128,7 @@ Usage: lsi.py [OPTIONS]
 |                                                         refined LSI         |
 |                                                         computation         |
 |                                                         [default: Refined]  |
-|    --output_resolution  -res        INTEGER RANGE       Output resolution.  |
+|    --output_resoluti▒  -res        INTEGER RANGE        Output resolution.  |
 |                                    [1<=x<=1000]         Taking from DEM if  |
 |                                                         not provided        |
 |                                                         [default: 10;       |
@@ -150,6 +151,15 @@ Usage: lsi.py [OPTIONS]
 |                                                         files (geology,     |
 |                                                         aspect, slope,      |
 |                                                         etc).               |
+|                                                         [default: True]     |
+|    --jenks                                              Set this flag if    |
+|                                                         you want to apply a |
+|                                                         jenks breaks into 5 |
+|                                                         LSI classes (It     |
+|                                                         might run for       |
+|                                                         longer time as it's |
+|                                                         an expensive        |
+|                                                         computation).       |
 |                                                         [default: True]     |
 |    --help              -h                               Show this message   |
 |                                                         and exit.           |

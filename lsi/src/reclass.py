@@ -14,7 +14,9 @@ You should have received a copy of the GNU General Public License along with LSI
 
 from enum import unique
 
+import numpy as np
 import xarray as xr
+
 from sertit.misc import ListEnum
 
 
@@ -28,6 +30,36 @@ class LandcoverType(ListEnum):
     ESAWC = "ESA WorldCover - 2021 (10m)"
     GLC = "Global Land Cover - Copernicus 2019 (100m)"
     ELC = "ESRI Annual Land Cover 2021 (10m)"
+
+
+def classify_raster(raster, raster_steps, raster_classes):
+    """
+    Reclassification (used for Slope, Aspect and Distance to River)
+
+    This function allows to calculate a classification of raster based on STEPS and CLASSES
+    Inputs:
+        raster: Raster in xarray
+        raster_steps: List of STEPS
+        raster_classes: Dictionary of CLASSES based on the STEPS
+    Outputs:
+        classified raster in numpy
+    """
+    # Conditions
+    conds = (
+        [raster <= raster_steps[1]]
+        + [
+            (raster > raster_steps[i]) & (raster <= raster_steps[i + 1])
+            for i in range(1, len(raster_steps) - 1)
+        ]
+        + [raster > raster_steps[-1]]
+    )
+
+    # Create classified array
+    class_arr = np.select(
+        conds, raster_classes.keys(), default=1  # Minimum class by default
+    )
+    return class_arr
+
 
 
 def reclass_landcover(landcover, landcover_name):

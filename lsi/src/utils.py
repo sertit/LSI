@@ -26,7 +26,7 @@ import xarray as xr
 from rasterio.enums import Resampling
 from rasterio.merge import merge
 from sertit import AnyPath, rasters
-from sertit.types import AnyPathType
+from sertit.types import AnyPathType, AnyPathStrType
 from whitebox import WhiteboxTools
 
 
@@ -40,32 +40,8 @@ class RoutingAlgorithm(Enum):
 
 PATH_ARR_DS = Union[str, tuple, rasterio.DatasetReader]
 
-
-def classify_raster(raster, raster_steps, raster_classes):
-    """
-    This function allows to calculate a classification of raster based on STEPS and CLASSES
-    Inputs:
-        raster: Raster in xarray
-        raster_steps: List of STEPS
-        raster_classes: Dictionary of CLASSES based on the STEPS
-    Outputs:
-        classified raster in numpy
-    """
-    # Conditions
-    conds = (
-        [raster <= raster_steps[1]]
-        + [
-            (raster > raster_steps[i]) & (raster <= raster_steps[i + 1])
-            for i in range(1, len(raster_steps) - 1)
-        ]
-        + [raster > raster_steps[-1]]
-    )
-
-    # Create classified array
-    class_arr = np.select(
-        conds, raster_classes.keys(), default=1  # Minimum class by default
-    )
-    return class_arr
+SIEVE_THRESH = 30 # pixels
+MMU = 200 # pixels
 
 
 def xr_to_gdf(
@@ -91,7 +67,7 @@ def xr_to_gdf(
     return gpd.GeoDataFrame(df, crs=crs, geometry=df_geometry)
 
 
-def np_to_xr(raster, reference_raster, crs, band_name="Value"):
+def np_to_xr(raster, reference_raster, band_name="Value"):
     """
     This function allows to transform from numpy to xarray
     Inputs:
@@ -103,10 +79,8 @@ def np_to_xr(raster, reference_raster, crs, band_name="Value"):
     """
     if len(raster.shape) == 2:
         raster = np.broadcast_to(raster, (1, raster.shape[0], raster.shape[1]))
-        # print(raster.shape)
     raster = xr.DataArray(raster, coords=reference_raster.coords, name=band_name)
     raster = raster.rio.set_spatial_dims(x_dim="x", y_dim="y")
-    #    raster = raster.rio.write_crs(crs, inplace=True)
     return raster
 
 
@@ -131,11 +105,18 @@ def initialize_whitebox_tools(
 
 
 # Extracted from hillshade function from sertit package
-def aspect(ds: PATH_ARR_DS, proj_crs):
+def aspect(ds: PATH_ARR_DS):
     """
     This function was extracted from the hillshade function available at the sertit package
     available at: https://sertit-utils.readthedocs.io/en/
     It allows to calculate only the aspect
+
+     Args:
+         ds (AnyRasterType): Path to the raster, its dataset, its :code:`xarray` or a tuple containing its array and metadata
+         proj_crs (string): Coordinate Reference System
+
+     Returns:
+         (np.ma.masked_array, dict): Hillshade and its metadata
     """
     array = ds
     # Squeeze if needed
@@ -145,7 +126,7 @@ def aspect(ds: PATH_ARR_DS, proj_crs):
     dx, dy = np.gradient(array, *array.rio.resolution())
     aspect = np.arctan2(dx, dy)
     # from numpy to xarray
-    aspect = np_to_xr(aspect, ds, proj_crs)
+    aspect = np_to_xr(aspect, ds)
     # collocate
     aspect = rasters.collocate(ds, aspect, Resampling.bilinear)
     return aspect
@@ -283,32 +264,67 @@ def mosaicing(raster_list, proj_crs, output_path, name):
     Returns:
         Path for the Mosaic raster in xarray format
     """
-    src_files_to_mosaic = []
-    for raster_path in raster_list:
-        src = rio.open(raster_path)
-        src_files_to_mosaic.append(src)
-    # Merge the rasters
-    mosaic, out_trans = merge(src_files_to_mosaic)
+    # src_files_to_mosaic = []
+    # for raster_path in raster_list:
+    #     src = rio.open(raster_path)
+    #     src_files_to_mosaic.append(src)
+    # # Merge the rasters
+    # mosaic, out_trans = merge(src_files_to_mosaic)
 
-    # Copy the metadata
-    out_meta = src_files_to_mosaic[0].meta.copy()
-    out_meta.update(
-        {
-            "driver": "GTiff",
-            "height": mosaic.shape[1],
-            "width": mosaic.shape[2],
-            "transform": out_trans,
-            "crs": proj_crs,
-        }
-    )
+    # # Copy the metadata
+    # out_meta = src_files_to_mosaic[0].meta.copy()
+    # out_meta.update(
+    #     {
+    #         "driver": "GTiff",
+    #         "height": mosaic.shape[1],
+    #         "width": mosaic.shape[2],
+    #         "transform": out_trans,
+    #         "crs": proj_crs,
+    #     }
+    # )
 
     output_path = os.path.join(output_path, AnyPath(str(name) + "_mosaic.tif"))
 
-    with rio.open(output_path, "w", **out_meta) as dest:
-        dest.write(mosaic)
+    # with rio.open(output_path, "w", **out_meta) as dest:
+    #     dest.write(mosaic)
+
+    mosaic_raster = rasters.merge_gtiff(raster_list, output_path)
 
     # Close all source files
-    for src in src_files_to_mosaic:
-        src.close()
+    # for src in src_files_to_mosaic:
+    #     src.close()
 
     return output_path
+
+
+def raster_postprocess(x_raster: xr.DataArray
+                    # ,vector_path: AnyPathStrType
+                    ) -> gpd.GeoDataFrame:
+    """
+    This function allows a postprocessing of sieving and MMU in the LSI raster
+    Args:
+        x_raster: xarrays
+        proj_crs: CRS
+        output_path: Path to be written the new raster
+        name: str, name for the raster
+    Returns:
+        Path for the Mosaic raster in xarray format
+    """
+    # Sieve
+    raster_sieved = rasters.sieve(
+        x_raster, sieve_thresh=SIEVE_THRESH, connectivity=8
+    )
+
+    # Vectorise
+    raster_vectorized = rasters.vectorize(raster_sieved)
+    
+    if not raster_vectorized.empty:
+        # Apply MMU
+        raster_vectorized["area"] = raster_vectorized.area
+        raster_vectorized = raster_vectorized.loc[raster_vectorized["area"] > MMU]
+
+        # # Write
+        # raster_vectorized.to_file(vector_path)
+
+
+    return raster_sieved, raster_vectorized

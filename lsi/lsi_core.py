@@ -1,46 +1,39 @@
-"""
+# -*- coding: utf-8 -*-
+# This file is part of LSI.
+# LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+# LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
+""" lsi_core """
 
-This file is part of LSI.
+import logging  # noqa: E402
+import os  # noqa: E402
+import shutil  # noqa: E402
+import warnings  # noqa: E402
+from enum import unique  # noqa: E402
 
-LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+import geopandas as gpd  # noqa: E402
+import numpy as np  # noqa: E402
 
-LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# import rasterio as rio
+import xarray as xr  # noqa: E402
+from rasterio.enums import Resampling  # noqa: E402
+from sertit import AnyPath, geometry, rasters, vectors  # noqa: E402
+from sertit.misc import ListEnum  # noqa: E402
+from sertit.rasters import FLOAT_NODATA  # noqa: E402
+from sertit.unistra import get_geodatastore  # noqa: E402
 
-You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
-
-"""
-
-""" lsi """
-
-import logging
-import os
-import shutil
-import warnings
-from enum import unique
-
-import geopandas as gpd
-import numpy as np
-import rasterio as rio
-import xarray as xr
-from rasterio.enums import Resampling
-from sertit import AnyPath, geometry, rasters, vectors
-from sertit.misc import ListEnum
-from sertit.rasters import FLOAT_NODATA
-from sertit.unistra import get_geodatastore
-
-from lsi.src.lsi_calculator import (
+from lsi.src.lsi_calculator import (  # noqa: E402; lithology_raster_eu,
     aspect_raster,
     elevation_raster,
     geology_raster,
     hydro_raster,
     landcover_raster,
     landcover_raster_eu,
-    # lithology_raster_eu,
     slope_raster,
     slope_raster_eu,
 )
-from lsi.src.reclass import LandcoverType
-from lsi.src.utils import (
+from lsi.src.reclass import LandcoverType  # noqa: E402
+from lsi.src.utils import (  # noqa: E402
     mosaicing,
     produce_a_reclass_arr,
     raster_postprocess,
@@ -122,8 +115,10 @@ class DataPath:
             cls.GLOBAL_DIR
             / "ELSUSv2"
             / "ELSUSv2_six_datasets"
-            / "lithology_epsg4326.tif"
+            / "lithology_epsg4326.tif"  # projected to epsg4326
         )
+
+
 @unique
 class InputParameters(ListEnum):
     """
@@ -215,7 +210,6 @@ def check_parameters(input_dict: dir) -> None:
         raise ValueError(
             f'{"Corine Land Cover can not be used for GLOBAL calculations, only in Europe !"}'
         )
-    
     return
 
 
@@ -272,9 +266,6 @@ def lsi_core(input_dict: dict) -> None:
     except:  # noqa
         aoi = aoi.set_crs(proj_crs, allow_override=True)
         aoi = aoi.to_crs(proj_crs)
-
-    # --- ## Define standard paths for both locations EUROPE and GLOBAL ## ---
-    # lithology_path = str(DataPath.LITHOLOGY_PATH)
 
     #  Dict that store dem name and dem path
     dem_path_dict = {
@@ -409,7 +400,7 @@ def lsi_core(input_dict: dict) -> None:
         LOGGER.info("-- Crop DEM")
         dem = rasters.crop(dem_b, aoi)
 
-        # -- 1. Geology (to be erased for new Lithoology dataset)
+        # -- 1. Geology (to be erased for new Lithology dataset if ELSUS lithology is used)
 
         # Reading geology database, clip to aoi and reproject to proj_crs
         litho_db = gpd.read_file(lithology_path, driver="FileGDB", mask=aoi)
@@ -457,7 +448,7 @@ def lsi_core(input_dict: dict) -> None:
         # raster in the lists below
         landcover_list = []
         slope_list = []
-        lithology_list = []
+        # lithology_list = []
         for _, row in physio_zones_aoi.iterrows():
             i += 1
             # The Climatic Zone
@@ -525,7 +516,7 @@ def lsi_core(input_dict: dict) -> None:
             # lithology_w_path = str(
             #     elsus_weights_path / str(str(db_file) + "/Lithology_Z" + str(zone) + ".dbf")
             # )
-            # # -- Compute the Rasters
+            # -- Compute the Rasters
             # lithology_dir = lithology_raster_eu(
             #     lithology_w_path,
             #     lithology_path,
@@ -540,12 +531,12 @@ def lsi_core(input_dict: dict) -> None:
             # lithology_list.append(lithology_dir)
 
         # Mosaicing the rasters by zone available in the lists previously mentioned
-        slope_mosaic_path = mosaicing(slope_list, proj_crs, tmp_dir, "slope_weight")
-        landcover_mosaic_path = mosaicing(
-            landcover_list, proj_crs, tmp_dir, "landcover_weight"
+        slope_mosaic_path, _ = mosaicing(slope_list, tmp_dir, "slope_weight")
+        landcover_mosaic_path, _ = mosaicing(
+            landcover_list, tmp_dir, "landcover_weight"
         )
-        # lithology_mosaic_path = mosaicing(
-        #     lithology_list, proj_crs, tmp_dir, "lithology_weight"
+        # lithology_mosaic_path, _ = mosaicing(
+        #     lithology_list, tmp_dir, "lithology_weight"
         # )
 
         # Read the mosaiced rasters
@@ -713,11 +704,14 @@ def lsi_core(input_dict: dict) -> None:
     )  # There should not be negative values (border effect)
     lsi_tif = lsi_tif.rio.write_crs(proj_crs, inplace=True)
 
-    # Write in memory LSI with unclassified values
-    rasters.write(lsi_tif, os.path.join(tmp_dir, "lsi_unclassified.tif"))
-
-    if jenks_break: # Apply jenks only if user requires it (this option takes a longer time)
+    if (
+        jenks_break
+    ):  # Apply jenks only if user requires it (this option takes a longer time)
         # -- LSI reclassification: 1 to 5
+
+        # Write in memory LSI with unclassified values
+        rasters.write(lsi_tif, os.path.join(output_path, "lsi_unclassified.tif"))
+
         LOGGER.info("-- Reclassification of LSI in 5 vulnerability classes")
 
         with warnings.catch_warnings():
@@ -729,7 +723,9 @@ def lsi_core(input_dict: dict) -> None:
             lsi_reclass_vector = rasters.vectorize(lsi_reclass)
 
             # Delete class 6 for values above the max value of LSI
-            lsi_reclass_vector_c = lsi_reclass_vector[lsi_reclass_vector["raster_val"] != 6]
+            lsi_reclass_vector_c = lsi_reclass_vector[
+                lsi_reclass_vector["raster_val"] != 6
+            ]
 
             # Going back to raster
             lsi_reclass_tif = rasters.rasterize(
@@ -742,15 +738,18 @@ def lsi_core(input_dict: dict) -> None:
             )  # There should not be 0 values for classes) (border effect)
             lsi_tif = lsi_reclass_tif.rio.write_crs(proj_crs, inplace=True)
 
-    # Post-processing
-    # Currently there is an error with the sieving
-    lsi_tif_sieved, lsi_vector = raster_postprocess(lsi_tif)
+        LOGGER.info("-- Writing LSI in memory")
+        # Post-processing
+        # Currently there is an error with the sieving
+        lsi_tif_sieved, lsi_vector = raster_postprocess(lsi_tif)
+        vectors.write(lsi_vector, os.path.join(output_path, "lsi.shp"))
 
-    LOGGER.info("-- Writing LSI in memory")
-
-    # Write in memory
-    rasters.write(lsi_tif, os.path.join(output_path, "lsi.tif"))
-    vectors.write(lsi_vector, os.path.join(output_path, "lsi.shp"))
+        # Write in memory
+        rasters.write(lsi_tif, os.path.join(output_path, "lsi.tif"))
+    else:
+        LOGGER.info("-- Writing LSI in memory")
+        # Write in memory LSI with unclassified values
+        rasters.write(lsi_tif, os.path.join(output_path, "lsi_unclassified.tif"))
 
     if not temp:
         LOGGER.info("-- Deleting temporary files")

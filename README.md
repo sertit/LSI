@@ -42,6 +42,8 @@ with a DEM and a Landcover already set as default.
 
 ![Scope of the European method ](Scope_european_method.png)
 
+> :information_source: It is also relevant to mention that the EUROPE method might be less accurate in the coastal region due to the definition of the Climate-physiographical zones, which in some cases might omit parts of the coast. The same applies for small islands, where not all the land might be covered. For these cases the GLOBAL method is best recommended.
+
 # ArcGIS Pro inputs:
 
 ### Basic inputs
@@ -91,6 +93,18 @@ Resolution of the output raster in the unit of the output coordinate system.
 
 Default : 30 meters
 
+**Keep temporal folder**
+
+A flag to confirm whether temporal files should be kept such as (lithology, slope, aspect and other layers)
+
+Default : Yes
+
+**Apply Jenks breaks classification**
+
+A flag, to confirm whether a 5-class classification should be performed. If *Yes*, a 5-class lsi.tif output will be created along with a vector.
+
+Default : Yes
+
 ![alt text](Arcgispro_lsi_toolbox.png)
 
 ## Run from the command line
@@ -128,7 +142,7 @@ Usage: lsi.py [OPTIONS]
 |                                                         refined LSI         |
 |                                                         computation         |
 |                                                         [default: Refined]  |
-|    --output_resoluti▒  -res        INTEGER RANGE        Output resolution.  |
+|    --output_resolution  -res        INTEGER RANGE       Output resolution.  |
 |                                    [1<=x<=1000]         Taking from DEM if  |
 |                                                         not provided        |
 |                                                         [default: 10;       |
@@ -169,16 +183,23 @@ Usage: lsi.py [OPTIONS]
 
 Example for running the tool from the command line:
 
+Simplest scenario (the following line will provide a simple LSI raster with the GLOBAL method and the default DEM and LULC for the AOI provided, with 5-classes and the LSI shapefile)
+
+```shell
+python lsi.py -aoi "\\path\to\aoi_Bizou_Normandy.shp" -out "\\path\to\output_folder"
+```
+
+
 Global
 
 ```shell
-python lsi.py -aoi "\\path\to\aoi_caracas.shp" -loc "Global" -dem "COPDEM 30m" -lulc "ESA Worldcover - 2021 (10m)" -res 30 -out "\\path\to\output_folder"
+python lsi.py -aoi "\\path\to\aoi_Caracas.shp" -loc "Global" -dem "COPDEM 30m" -lulc "ESA Worldcover - 2021 (10m)" -res 30 -out "\\path\to\output_folder" --jenks True
 ```
 
 Europe
 
 ```shell
-python lsi.py -aoi "\\path\to\aoi_grenoble_france.shp" -loc "Europe" -dem "COPDEM 30m" -lulc "Corine Land Cover - 2018 (100m)" -eu_method "Refined" -res 30 -out "\\path\to\output_folder"
+python lsi.py -aoi "\\path\to\aoi_Souffelweyersheim_BashRhin.shp" -loc "Europe" -dem "COPDEM 30m" -lulc "Corine Land Cover - 2018 (100m)" -eu_method "Refined" -res 30 -out "\\path\to\output_folder" --temp False --jenks False
 ```
 
 

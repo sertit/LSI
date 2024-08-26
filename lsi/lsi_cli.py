@@ -1,15 +1,8 @@
-"""
-
-This file is part of LSI.
-
-LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-
-LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
-
-"""
-
+# -*- coding: utf-8 -*-
+# This file is part of LSI.
+# LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+# LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
 """ lsi : main script with CLI """
 
 import logging
@@ -121,8 +114,7 @@ from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
     help="Set this flag if you want to apply a jenks breaks into 5 LSI classes (It might run for longer time as it's an expensive computation). ",
     default=True,
 )
-
-def compute_lsi(
+def compute_lsi(  # noqa: E304
     aoi,
     location,
     dem_name,

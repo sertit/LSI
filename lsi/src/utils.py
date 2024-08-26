@@ -1,33 +1,28 @@
-"""
-
-This file is part of LSI.
-
-LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-
-LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
-
-"""
-
+# -*- coding: utf-8 -*-
+# This file is part of LSI.
+# LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+# LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
 """ Utils """
 
-import os
-from enum import Enum
-from typing import Optional, Union
+import os  # noqa: E402
+from enum import Enum  # noqa: E402
+from typing import Optional, Union  # noqa: E402
 
-import dask.array as da
-import geopandas as gpd
-import jenkspy
-import numpy as np
-import rasterio
-import rasterio as rio
-import xarray as xr
-from rasterio.enums import Resampling
-from rasterio.merge import merge
-from sertit import AnyPath, rasters
-from sertit.types import AnyPathType, AnyPathStrType
-from whitebox import WhiteboxTools
+import dask.array as da  # noqa: E402
+import geopandas as gpd  # noqa: E402
+import jenkspy  # noqa: E402
+import numpy as np  # noqa: E402
+import rasterio  # noqa: E402
+
+# import rasterio as rio
+import xarray as xr  # noqa: E402
+from rasterio.enums import Resampling  # noqa: E402
+
+# from rasterio.merge import merge
+from sertit import AnyPath, rasters  # noqa: E402
+from sertit.types import AnyPathType  # noqa: E402
+from whitebox import WhiteboxTools  # noqa: E402
 
 
 class RoutingAlgorithm(Enum):
@@ -40,8 +35,8 @@ class RoutingAlgorithm(Enum):
 
 PATH_ARR_DS = Union[str, tuple, rasterio.DatasetReader]
 
-SIEVE_THRESH = 30 # pixels
-MMU = 200 # pixels
+SIEVE_THRESH = 30  # pixels
+MMU = 200  # pixels
 
 
 def xr_to_gdf(
@@ -253,53 +248,22 @@ def produce_a_reclass_arr(a_xarr, downsample_factor=200):
     return a_xarr.copy(data=a_reclass_arr)
 
 
-def mosaicing(raster_list, proj_crs, output_path, name):
+def mosaicing(raster_list, output_path, name):
     """
     This function allows to mosaic the rasters by zone
     Args:
         raster_list: list of xarrays
-        proj_crs: CRS
         output_path: Path to be written the new raster
         name: str, name for the raster
     Returns:
         Path for the Mosaic raster in xarray format
     """
-    # src_files_to_mosaic = []
-    # for raster_path in raster_list:
-    #     src = rio.open(raster_path)
-    #     src_files_to_mosaic.append(src)
-    # # Merge the rasters
-    # mosaic, out_trans = merge(src_files_to_mosaic)
-
-    # # Copy the metadata
-    # out_meta = src_files_to_mosaic[0].meta.copy()
-    # out_meta.update(
-    #     {
-    #         "driver": "GTiff",
-    #         "height": mosaic.shape[1],
-    #         "width": mosaic.shape[2],
-    #         "transform": out_trans,
-    #         "crs": proj_crs,
-    #     }
-    # )
-
     output_path = os.path.join(output_path, AnyPath(str(name) + "_mosaic.tif"))
-
-    # with rio.open(output_path, "w", **out_meta) as dest:
-    #     dest.write(mosaic)
-
     mosaic_raster = rasters.merge_gtiff(raster_list, output_path)
-
-    # Close all source files
-    # for src in src_files_to_mosaic:
-    #     src.close()
-
-    return output_path
+    return output_path, mosaic_raster
 
 
-def raster_postprocess(x_raster: xr.DataArray
-                    # ,vector_path: AnyPathStrType
-                    ) -> gpd.GeoDataFrame:
+def raster_postprocess(x_raster: xr.DataArray) -> gpd.GeoDataFrame:
     """
     This function allows a postprocessing of sieving and MMU in the LSI raster
     Args:
@@ -311,13 +275,10 @@ def raster_postprocess(x_raster: xr.DataArray
         Path for the Mosaic raster in xarray format
     """
     # Sieve
-    raster_sieved = rasters.sieve(
-        x_raster, sieve_thresh=SIEVE_THRESH, connectivity=8
-    )
+    raster_sieved = rasters.sieve(x_raster, sieve_thresh=SIEVE_THRESH, connectivity=8)
 
     # Vectorise
     raster_vectorized = rasters.vectorize(raster_sieved)
-    
     if not raster_vectorized.empty:
         # Apply MMU
         raster_vectorized["area"] = raster_vectorized.area
@@ -325,6 +286,5 @@ def raster_postprocess(x_raster: xr.DataArray
 
         # # Write
         # raster_vectorized.to_file(vector_path)
-
 
     return raster_sieved, raster_vectorized

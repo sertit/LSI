@@ -111,6 +111,35 @@ class Lsi(object):
             direction="Input",
         )
 
+        # 8. Temp folder
+        temp_folder = arcpy.Parameter(
+            displayName="Keep temporal folder",
+            name="temp_folder",
+            datatype="GPString",
+            parameterType="Required",
+            direction="Input",
+            category="Advanced",
+        )
+
+        temp_folder.filter.type = "ValueList"
+        temp_folder.filter.list = ["Yes", "No"]
+        temp_folder.value = "Yes"
+
+        # 9. Jenks
+        jenks_class = arcpy.Parameter(
+            displayName="Apply Jenks breaks classification",
+            name="jenks_class",
+            datatype="GPString",
+            parameterType="Required",
+            direction="Input",
+            category="Advanced",
+        )
+
+        jenks_class.filter.type = "ValueList"
+        jenks_class.filter.list = ["Yes", "No"]
+        jenks_class.value = "Yes"
+
+
         params = [
             aoi,
             location,
@@ -120,6 +149,8 @@ class Lsi(object):
             dem_raster_path,
             output_resolution,
             output_folder,
+            temp_folder,
+            jenks_class
         ]
 
         return params
@@ -133,13 +164,13 @@ class Lsi(object):
         validation is performed.  This method is called whenever a parameter
         has been changed."""
 
-        if parameters[1].value == "Europe":
-            parameters[2].enabled = True
+        if parameters[1].value == "Europe": # Location
+            parameters[2].enabled = True # ELSUS method 
         else:
             parameters[2].enabled = False
 
-        if parameters[4].value == "Other":
-            parameters[5].enabled = True
+        if parameters[4].value == "Other": # DEM
+            parameters[5].enabled = True # Other DEM path enabling
         else:
             parameters[5].enabled = False
 
@@ -241,7 +272,16 @@ def main_arcgis(parameters, messages):
     # output = parameters[1].valueAsText
 
     aoi_path = feature_layer_to_path(parameters[0].value)
+    
+    if parameters[8].value == "Yes": # Keep temporal folders?
+        temp = True
+    else:
+        temp = False
 
+    if parameters[9].value == "Yes": # Jenks
+        jenks = True
+    else:
+        jenks = False
 
     # --- Parameters ---
     # Load inputs
@@ -255,7 +295,8 @@ def main_arcgis(parameters, messages):
         InputParameters.EUROPE_METHOD.value: parameters[2].valueAsText,
         InputParameters.OUTPUT_RESOLUTION.value: parameters[6].valueAsText,
         InputParameters.OUTPUT_DIR.value: parameters[7].valueAsText,
-        InputParameters.TEMP.value: False,
+        InputParameters.TEMP.value: temp,
+        InputParameters.JENKS.value: jenks,
     }
     DataPath.load_paths()
     try:

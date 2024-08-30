@@ -5,25 +5,24 @@
 # You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
 """ lsi_core """
 
-import logging  
-import os  
-import shutil  
-import warnings  
-from enum import unique  
+import logging
+import os
+import shutil
+import warnings
+from enum import unique
 
-import geopandas as gpd  
-import numpy as np  
+import geopandas as gpd
+import numpy as np
 
 # import rasterio as rio
-import xarray as xr  
-from rasterio.enums import Resampling  
-from sertit import AnyPath, geometry, rasters, vectors  
-from sertit.misc import ListEnum  
-from sertit.rasters import FLOAT_NODATA  
-from sertit.unistra import get_geodatastore  
+import xarray as xr
+from rasterio.enums import Resampling
+from sertit import AnyPath, geometry, rasters, vectors
+from sertit.misc import ListEnum
+from sertit.rasters import FLOAT_NODATA
+from sertit.unistra import get_geodatastore
 
-from lsi.src.lsi_calculator import (
-    #lithology_raster_eu,
+from lsi.src.lsi_calculator import (  # lithology_raster_eu,
     aspect_raster,
     elevation_raster,
     geology_raster,
@@ -33,12 +32,8 @@ from lsi.src.lsi_calculator import (
     slope_raster,
     slope_raster_eu,
 )
-from lsi.src.reclass import LandcoverType  
-from lsi.src.utils import (  
-    mosaicing,
-    produce_a_reclass_arr,
-    raster_postprocess,
-)
+from lsi.src.reclass import LandcoverType
+from lsi.src.utils import mosaicing, produce_a_reclass_arr, raster_postprocess
 
 DEBUG = False
 LOGGING_FORMAT = "%(asctime)s - [%(levelname)s] - %(message)s"

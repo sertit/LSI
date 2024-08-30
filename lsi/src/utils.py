@@ -5,24 +5,24 @@
 # You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
 """ Utils """
 
-import os  
-from enum import Enum  
-from typing import Optional, Union  
+import os
+from enum import Enum
+from typing import Optional, Union
 
-import dask.array as da  
-import geopandas as gpd  
-import jenkspy  
-import numpy as np  
-import rasterio  
+import dask.array as da
+import geopandas as gpd
+import jenkspy
+import numpy as np
+import rasterio
 
 # import rasterio as rio
-import xarray as xr  
-from rasterio.enums import Resampling  
+import xarray as xr
+from rasterio.enums import Resampling
 
 # from rasterio.merge import merge
-from sertit import AnyPath, rasters  
-from sertit.types import AnyPathType 
-from whitebox import WhiteboxTools 
+from sertit import AnyPath, rasters
+from sertit.types import AnyPathType
+from whitebox import WhiteboxTools
 
 
 class RoutingAlgorithm(Enum):

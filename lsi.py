@@ -5,6 +5,6 @@
 # You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
 """ lsi : shortcut to CLI """
 
-from lsi.lsi_cli import compute_lsi  
+from lsi.lsi_cli import compute_lsi
 
 compute_lsi()

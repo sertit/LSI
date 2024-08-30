@@ -5,24 +5,25 @@
 # You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
 """ lsi_core """
 
-import logging  # noqa: E402
-import os  # noqa: E402
-import shutil  # noqa: E402
-import warnings  # noqa: E402
-from enum import unique  # noqa: E402
+import logging  
+import os  
+import shutil  
+import warnings  
+from enum import unique  
 
-import geopandas as gpd  # noqa: E402
-import numpy as np  # noqa: E402
+import geopandas as gpd  
+import numpy as np  
 
 # import rasterio as rio
-import xarray as xr  # noqa: E402
-from rasterio.enums import Resampling  # noqa: E402
-from sertit import AnyPath, geometry, rasters, vectors  # noqa: E402
-from sertit.misc import ListEnum  # noqa: E402
-from sertit.rasters import FLOAT_NODATA  # noqa: E402
-from sertit.unistra import get_geodatastore  # noqa: E402
+import xarray as xr  
+from rasterio.enums import Resampling  
+from sertit import AnyPath, geometry, rasters, vectors  
+from sertit.misc import ListEnum  
+from sertit.rasters import FLOAT_NODATA  
+from sertit.unistra import get_geodatastore  
 
-from lsi.src.lsi_calculator import (  # noqa: E402; lithology_raster_eu,
+from lsi.src.lsi_calculator import (
+    #lithology_raster_eu,
     aspect_raster,
     elevation_raster,
     geology_raster,
@@ -32,8 +33,8 @@ from lsi.src.lsi_calculator import (  # noqa: E402; lithology_raster_eu,
     slope_raster,
     slope_raster_eu,
 )
-from lsi.src.reclass import LandcoverType  # noqa: E402
-from lsi.src.utils import (  # noqa: E402
+from lsi.src.reclass import LandcoverType  
+from lsi.src.utils import (  
     mosaicing,
     produce_a_reclass_arr,
     raster_postprocess,

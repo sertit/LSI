@@ -17,7 +17,7 @@ import numpy as np
 # import rasterio as rio
 import xarray as xr
 from rasterio.enums import Resampling
-from sertit import AnyPath, geometry, rasters, vectors
+from sertit import AnyPath, rasters, vectors
 from sertit.misc import ListEnum
 from sertit.rasters import FLOAT_NODATA
 from sertit.unistra import get_geodatastore
@@ -286,7 +286,7 @@ def lsi_core(input_dict: dict) -> None:
 
     # Reading and Checking errors in DEM
     try:
-        aoi_b = geometry.buffer(aoi, REGULAR_BUFFER)
+        aoi_b = aoi.geometry.buffer(REGULAR_BUFFER)
         dem_xarr = rasters.read(dem_path, window=aoi_b)
         dem_reproj_xarr = dem_xarr.rio.reproject(
             proj_crs, resampling=Resampling.bilinear

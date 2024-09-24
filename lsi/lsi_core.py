@@ -287,7 +287,11 @@ def lsi_core(input_dict: dict) -> None:
     # Reading and Checking errors in DEM
     try:
         aoi_b = geometry.buffer(aoi, REGULAR_BUFFER)
-        dem_b = rasters.crop(dem_path, aoi_b)
+        dem_xarr = rasters.read(dem_path, window=aoi_b)
+        dem_reproj_xarr = dem_xarr.rio.reproject(
+            proj_crs, resampling=Resampling.bilinear
+        )
+        dem_b = rasters.crop(dem_reproj_xarr, aoi_b)
     except ValueError:
         raise ValueError(
             "Your AOI doesn't cover your DTM. Make sure your input data is valid."
@@ -312,7 +316,10 @@ def lsi_core(input_dict: dict) -> None:
         x_res, y_res = dem_b.rio.resolution()
         output_resolution = int(np.round(abs((x_res) + abs(y_res) / 2)))
 
-    dem_b = rasters.crop(dem_path, aoi_b)
+    dem_xarr = rasters.read(dem_path, window=aoi_b)
+    dem_reproj_xarr = dem_xarr.rio.reproject(proj_crs, resampling=Resampling.bilinear)
+    dem_b = rasters.crop(dem_reproj_xarr, aoi_b)
+    # dem_b = rasters.crop(dem_path, aoi_b)
 
     # -- Reprojecting DEM
     # DEM will be used as input for SLOPE, ELEVATION, ASPECT and HYDRO layers. Also as reference for Rasterization of Geology Layer.
@@ -589,7 +596,12 @@ def lsi_core(input_dict: dict) -> None:
         # 0. DEM
         LOGGER.info("-- Reading DEM")
 
-        dem = rasters.crop(dem_path, aoi)
+        dem_xarr = rasters.read(dem_path, window=aoi)
+        dem_reproj_xarr = dem_xarr.rio.reproject(
+            proj_crs, resampling=Resampling.bilinear
+        )
+        dem = rasters.crop(dem_reproj_xarr, aoi_b)
+        # dem = rasters.crop(dem_path, aoi)
         dem = dem.rio.reproject(
             proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
         )

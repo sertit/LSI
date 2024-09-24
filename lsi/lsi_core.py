@@ -286,7 +286,8 @@ def lsi_core(input_dict: dict) -> None:
 
     # Reading and Checking errors in DEM
     try:
-        aoi_b = aoi.geometry.buffer(REGULAR_BUFFER)
+        aoi_b = aoi
+        aoi_b.geometry = aoi_b.geometry.buffer(REGULAR_BUFFER)
         dem_xarr = rasters.read(dem_path, window=aoi_b)
         dem_reproj_xarr = dem_xarr.rio.reproject(
             proj_crs, resampling=Resampling.bilinear

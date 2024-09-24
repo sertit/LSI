@@ -248,7 +248,19 @@ def lsi_core(input_dict: dict) -> None:
         os.makedirs(tmp_dir)
 
     # -- Read AOI
-    aoi = gpd.read_file(aoi_path)
+
+    # Write wkt string input to shapefile
+    if aoi_path.startswith("POLYGON"):
+        aoi_gpd_wkt = gpd.GeoSeries.from_wkt([aoi_path])
+        aoi_raw_path_wkt = os.path.join(tmp_dir, "aoi_from_wkt.shp")
+
+        aoi_gpd_wkt_4326 = aoi_gpd_wkt.set_crs(epsg=4326)
+        aoi_gpd_wkt_4326.to_file(aoi_raw_path_wkt)
+        aoi_raw_path = aoi_raw_path_wkt
+
+        aoi = gpd.read_file(aoi_raw_path)
+    else:
+        aoi = vectors.read(aoi_path)
 
     # -- Define EPSG
     if epsg_code:

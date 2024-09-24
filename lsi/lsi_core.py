@@ -261,7 +261,7 @@ def lsi_core(input_dict: dict) -> None:
         aoi = aoi.to_crs(proj_crs)
     except:  # noqa
         aoi = aoi.set_crs(proj_crs, allow_override=True)
-        #aoi = aoi.to_crs(proj_crs)
+        # aoi = aoi.to_crs(proj_crs)
 
     #  Dict that store dem name and dem path
     dem_path_dict = {

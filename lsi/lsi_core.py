@@ -53,7 +53,7 @@ def geodatastore(ftep=False):
 
     """
     if ftep:
-        return AnyPath("s3://eo4sdg-data")  # TODO
+        return AnyPath("s3://eo4sdg-data")
     else:
         return get_geodatastore()
 
@@ -100,7 +100,7 @@ class DataPath:
         cls.WEIGHTS_EUROPE_PATH = (
             cls.GLOBAL_DIR / "ELSUSv2" / "DBF_weights"
         )  # This is used as root folder for Weights in Europe
-        cls.LITHOLOGY_PATH = cls.GLOBAL_DIR / "LiMW_GIS 2015" / "LiMW_GIS_2015.gdb"
+        cls.LITHOLOGY_PATH = cls.GLOBAL_DIR / "LiMW_GIS_2015" / "LiMW_GIS_2015.gdb"
         cls.ELSUS_ZONES_PATH = (
             cls.GLOBAL_DIR
             / "ELSUSv2"
@@ -248,7 +248,7 @@ def lsi_core(input_dict: dict) -> None:
         os.makedirs(tmp_dir)
 
     # -- Read AOI
-    aoi = vectors.read(aoi_path)
+    aoi = gpd.read_file(aoi_path)
 
     # -- Define EPSG
     if epsg_code:
@@ -261,7 +261,7 @@ def lsi_core(input_dict: dict) -> None:
         aoi = aoi.to_crs(proj_crs)
     except:  # noqa
         aoi = aoi.set_crs(proj_crs, allow_override=True)
-        aoi = aoi.to_crs(proj_crs)
+        #aoi = aoi.to_crs(proj_crs)
 
     #  Dict that store dem name and dem path
     dem_path_dict = {

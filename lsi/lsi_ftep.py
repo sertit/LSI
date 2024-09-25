@@ -103,9 +103,9 @@ def s3_env(*args, **kwargs):
 
                 if endpoint is not None:
                     args_rasterio["AWS_S3_ENDPOINT"] = endpoint
-                    args_s3_client[
-                        "endpoint_url"
-                    ] = f"https://{endpoint}"  # cloudpathlib can read endpoint from config file
+                    args_s3_client["endpoint_url"] = (
+                        f"https://{endpoint}"  # cloudpathlib can read endpoint from config file
+                    )
 
                 # Define S3 client for S3 paths
                 define_s3_client(**args_s3_client)

@@ -33,13 +33,19 @@ from lsi.src.lsi_calculator import (  # lithology_raster_eu,; hydro_raster,
     slope_raster_eu,
 )
 from lsi.src.reclass import LandcoverType
-from lsi.src.utils import mosaicing, produce_a_reclass_arr, raster_postprocess
+from lsi.src.utils import (
+    compute_statistics,
+    mosaicing,
+    produce_a_reclass_arr,
+    raster_postprocess,
+)
 
 DEBUG = False
 LOGGING_FORMAT = "%(asctime)s - [%(levelname)s] - %(message)s"
 LOGGER = logging.getLogger("LSI")
 
 REGULAR_BUFFER = 1000
+GADM_BUFFER = 15000  # Big buffer to avoid missing departments
 
 
 def geodatastore(ftep=False):
@@ -113,6 +119,7 @@ class DataPath:
             / "ELSUSv2_six_datasets"
             / "lithology_epsg4326.tif"  # projected to epsg4326
         )
+        cls.GADM_PATH = cls.GLOBAL_DIR / "GADM" / "gadm_410.gdb"
 
 
 @unique
@@ -241,6 +248,9 @@ def lsi_core(input_dict: dict) -> None:
     output_path = input_dict.get(InputParameters.OUTPUT_DIR.value)
     temp = input_dict.get(InputParameters.TEMP.value)
     jenks_break = input_dict.get(InputParameters.JENKS.value)
+
+    # Read GADM path for statistics
+    gadm_path = str(DataPath.GADM_PATH)
 
     # Define folder for temporal files
     tmp_dir = os.path.join(output_path, "temp_dir")
@@ -760,6 +770,22 @@ def lsi_core(input_dict: dict) -> None:
         LOGGER.info("-- Writing LSI in memory")
         # Write in memory LSI with unclassified values
         rasters.write(lsi_tif, os.path.join(output_path, "lsi_unclassified.tif"))
+
+    LOGGER.info("-- Computing LSI statistics for unclassified LSI")
+
+    # Read GADM layer and overlay with AOI
+    aoi_gadm = aoi.geometry.buffer(GADM_BUFFER)
+    gadm = vectors.read(gadm_path, window=aoi_gadm)
+    gadm = gadm.to_crs(proj_crs)
+    gadm = gpd.overlay(gadm, aoi)
+
+    lsi_stats = compute_statistics(
+        gadm, os.path.join(output_path, "lsi_unclassified.tif")
+    )
+
+    LOGGER.info("-- Writing LSI statistics in memory")
+    # Write statistics in memory
+    vectors.write(lsi_stats, os.path.join(output_path, "lsi_unclassified_stats.shp"))
 
     if not temp:
         LOGGER.info("-- Deleting temporary files")

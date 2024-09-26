@@ -13,11 +13,13 @@ import dask.array as da
 import geopandas as gpd
 import jenkspy
 import numpy as np
+import pandas as pd
 import rasterio
 
 # import rasterio as rio
 import xarray as xr
 from rasterio.enums import Resampling
+from rasterstats import zonal_stats
 
 # from rasterio.merge import merge
 from sertit import AnyPath, rasters
@@ -288,3 +290,50 @@ def raster_postprocess(x_raster: xr.DataArray) -> gpd.GeoDataFrame:
         # raster_vectorized.to_file(vector_path)
 
     return raster_sieved, raster_vectorized
+
+
+def compute_statistics(gadm_layer, raster_path):
+    """
+    This function allows the zonal statistics and formatting of the geodataframe
+    for the LSI statistics based on Deparments level 0, 1 and 2 for the GADM layer
+    Args:
+        gadm_layer: geodataframe already cropped to the AOI
+        raster_path: Path for the LSI raster
+    Returns:
+        Geodataframe with the statistics data for each of the Levels 0,1 and 2 availables
+        in the AOI.
+    """
+    # Prepare the geodataframe structure
+    gadm_df = gadm_layer[["NAME_0", "NAME_1", "NAME_2", "geometry"]]
+
+    # Prepare the three (0, 1, 2) levels of deparments:
+    # Level0
+    gadm_0 = gadm_df.dissolve(by="NAME_0").reset_index()
+    gadm_0["LEVL_CODE"] = 0
+    gadm_0 = gadm_0[["NAME_0", "LEVL_CODE", "geometry"]].rename(
+        columns={"NAME_0": "NUTS_NAME"}
+    )
+    # Level1
+    gadm_1 = gadm_df.dissolve(by="NAME_1").reset_index()
+    gadm_1["LEVL_CODE"] = 1
+    gadm_1 = gadm_1[["NAME_1", "LEVL_CODE", "geometry"]].rename(
+        columns={"NAME_1": "NUTS_NAME"}
+    )
+    # Level2
+    gadm_2 = gadm_df.dissolve(by="NAME_2").reset_index()
+    gadm_2["LEVL_CODE"] = 2
+    gadm_2 = gadm_2[["NAME_2", "LEVL_CODE", "geometry"]].rename(
+        columns={"NAME_2": "NUTS_NAME"}
+    )
+
+    # GADM layer for our AOI
+    lsi_stats = pd.concat([gadm_0, gadm_1, gadm_2]).reset_index()
+    lsi_stats["FER_LR_ave"] = 0.0
+    lsi_stats = lsi_stats[["LEVL_CODE", "NUTS_NAME", "FER_LR_ave", "geometry"]]
+
+    # Copute zonal statistics
+    stats = zonal_stats(lsi_stats, raster_path, stats=["mean"])
+
+    lsi_stats["FER_LR_ave"] = pd.DataFrame(stats)
+
+    return lsi_stats

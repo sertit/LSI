@@ -22,11 +22,11 @@ from sertit.misc import ListEnum
 from sertit.rasters import FLOAT_NODATA
 from sertit.unistra import get_geodatastore
 
-from lsi.src.lsi_calculator import (  # lithology_raster_eu,
+from lsi.src.lsi_calculator import (  # lithology_raster_eu,; hydro_raster,
     aspect_raster,
     elevation_raster,
     geology_raster,
-    hydro_raster,
+    hydro_raster_wbw,
     landcover_raster,
     landcover_raster_eu,
     slope_raster,
@@ -287,12 +287,9 @@ def lsi_core(input_dict: dict) -> None:
     # Reading and Checking errors in DEM
     try:
         aoi_b = aoi
-        aoi_b.geometry = aoi_b.geometry.buffer(REGULAR_BUFFER)
-        dem_xarr = rasters.read(dem_path, window=aoi_b)
-        dem_reproj_xarr = dem_xarr.rio.reproject(
-            proj_crs, resampling=Resampling.bilinear
-        )
-        dem_b = rasters.crop(dem_reproj_xarr, aoi_b)
+        aoi_b = aoi_b.geometry.buffer(REGULAR_BUFFER)
+        # dem_b = rasters.read(dem_path, window=aoi_b)
+        dem_b = rasters.crop(dem_path, aoi_b)
     except ValueError:
         raise ValueError(
             "Your AOI doesn't cover your DTM. Make sure your input data is valid."
@@ -317,10 +314,7 @@ def lsi_core(input_dict: dict) -> None:
         x_res, y_res = dem_b.rio.resolution()
         output_resolution = int(np.round(abs((x_res) + abs(y_res) / 2)))
 
-    dem_xarr = rasters.read(dem_path, window=aoi_b)
-    dem_reproj_xarr = dem_xarr.rio.reproject(proj_crs, resampling=Resampling.bilinear)
-    dem_b = rasters.crop(dem_reproj_xarr, aoi_b)
-    # dem_b = rasters.crop(dem_path, aoi_b)
+    dem_b = rasters.crop(dem_path, aoi_b)
 
     # -- Reprojecting DEM
     # DEM will be used as input for SLOPE, ELEVATION, ASPECT and HYDRO layers. Also as reference for Rasterization of Geology Layer.
@@ -597,12 +591,7 @@ def lsi_core(input_dict: dict) -> None:
         # 0. DEM
         LOGGER.info("-- Reading DEM")
 
-        dem_xarr = rasters.read(dem_path, window=aoi)
-        dem_reproj_xarr = dem_xarr.rio.reproject(
-            proj_crs, resampling=Resampling.bilinear
-        )
-        dem = rasters.crop(dem_reproj_xarr, aoi_b)
-        # dem = rasters.crop(dem_path, aoi)
+        dem = rasters.crop(dem_path, aoi)
         dem = dem.rio.reproject(
             proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
         )
@@ -655,7 +644,7 @@ def lsi_core(input_dict: dict) -> None:
 
         # -- 5. Hydro
         hydro_dbf = gpd.read_file(hydro_dbf_path)
-        hydro_layer = hydro_raster(
+        hydro_layer = hydro_raster_wbw(
             hydro_dbf,
             dem_b,
             aoi,

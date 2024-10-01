@@ -13,9 +13,6 @@ import ftep_util as ftep
 from sertit import s3
 from sertit.logs import SU_NAME
 
-# from sertit import s3
-from sertit.s3 import define_s3_client
-
 LOGGER = logging.getLogger(SU_NAME)
 
 DEBUG = False
@@ -25,111 +22,14 @@ LOGGER = logging.getLogger("OSM Charter")
 FTEP_S3_ENDPOINT = "s3.waw2-1.cloudferro.com"
 
 
-AWS_ACCESS_KEY_ID = "AWS_ACCESS_KEY_ID"
-"""
-Environment variable linked to AWS Access Key ID.
-"""
-
-AWS_SECRET_ACCESS_KEY = "AWS_SECRET_ACCESS_KEY"
-"""
-Environment variable linked to AWS Secret Access Key.
-"""
-
-AWS_S3_ENDPOINT = "AWS_S3_ENDPOINT"
-"""
-Environment variable linked to AWS endpoint.
-"""
-
-USE_S3_STORAGE = "USE_S3_STORAGE"
-"""
-Environment variable created to use Unistra's S3 bucket.
-"""
-
-
-def s3_env(*args, **kwargs):
-    """
-    Create S3 compatible storage environment
-    You need to set endpoint url if you use s3 compatible storage
-    since GDAL/Rasterio does not read endpoint url from config file.
-
-    This function searches for S3 configuration in many places.
-    It does apply configuration variables precedence, and you might have a use for it.
-    Here is the order of precedence from least to greatest
-    (the last listed configuration variables override all other variables):
-        1. AWS profile
-        2. Given endpoint_url as function argument
-        3. AWS environment variable
-
-    Returns:
-        Callable: decorated function
-
-    Example:
-        >>> from sertit.s3 import s3_env
-        >>> from sertit import AnyPath
-        >>> @s3_env(endpoint="s3.unistra.fr")
-        >>> def file_exists(path: str):
-        >>>     pth = AnyPath(path)
-        >>>     print(pth.exists())
-        >>> file_exists("s3://sertit-geodatastore/GLOBAL/COPDEM_30m/COPDEM_30m.vrt")
-        True
-    """
-    import rasterio
-
-    use_s3 = kwargs.get("use_s3_env_var", USE_S3_STORAGE)
-    requester_pays = kwargs.get("requester_pays")
-    no_sign_request = kwargs.get("no_sign_request")
-    endpoint = os.getenv(AWS_S3_ENDPOINT, kwargs.get("endpoint"))
-    profile_name = kwargs.get("profile_name", None)
-
-    def decorator(function):
-        @wraps(function)
-        def s3_env_wrapper(*_args, **_kwargs):
-            """S3 environment wrapper"""
-            if int(os.getenv(use_s3, 1)):
-                args_rasterio = {
-                    "profile_name": profile_name,
-                    "CPL_CURL_VERBOSE": False,
-                    "AWS_VIRTUAL_HOSTING": False,
-                    "GDAL_DISABLE_READDIR_ON_OPEN": False,
-                    "AWS_NO_SIGN_REQUEST": "YES" if no_sign_request else "NO",
-                    "AWS_REQUEST_PAYER": "requester" if requester_pays else None,
-                }
-                args_s3_client = {
-                    "profile_name": profile_name,
-                    "requester_pays": requester_pays,
-                    "no_sign_request": no_sign_request,
-                }
-                args_s3_client.update(kwargs)
-
-                if endpoint is not None:
-                    args_rasterio["AWS_S3_ENDPOINT"] = endpoint
-                    args_s3_client["endpoint_url"] = (
-                        f"https://{endpoint}"  # cloudpathlib can read endpoint from config file
-                    )
-
-                # Define S3 client for S3 paths
-                define_s3_client(**args_s3_client)
-                os.environ[use_s3] = "1"
-                LOGGER.info("Using S3 files")
-                with rasterio.Env(**args_rasterio):
-                    return function(*_args, **_kwargs)
-
-            else:
-                os.environ[use_s3] = "0"
-                LOGGER.info("Using on disk files")
-                return function(*_args, **_kwargs)
-
-        return s3_env_wrapper
-
-    return decorator
-
-
 def ftep_s3_env(*args, **kwargs):
-    return s3_env(endpoint=FTEP_S3_ENDPOINT)(*args, **kwargs)
+    return s3.s3_env(endpoint=FTEP_S3_ENDPOINT)(*args, **kwargs)
 
 
 @ftep_s3_env
 def compute_lsi():
+    os.environ["AWS_VIRTUAL_HOSTING"] = "False"
+
     parameters_file_path = "/home/worker/workDir/FTEP-WPS-INPUT.properties"
     # Default parameter values
     params = ftep.Params(parameters_file_path)

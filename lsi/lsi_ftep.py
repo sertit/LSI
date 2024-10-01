@@ -8,9 +8,9 @@ import logging
 import logging.handlers
 import os
 import sys
-from functools import wraps
 
 import ftep_util as ftep
+from sertit import s3
 from sertit.logs import SU_NAME
 
 # from sertit import s3

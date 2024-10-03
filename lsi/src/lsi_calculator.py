@@ -64,7 +64,7 @@ def join_weights(xr_raster, weights_dbf, out_crs, weight_column="Value"):
 # --- GLOBAL LSI method functions
 
 
-def geology_raster(geology_dbf, litho_shp, dem, aoi, proj_crs, output_path):
+def geology_raster(litho_shp, dem, aoi, proj_crs, output_path):
     """ """
     LOGGER.info("-- Produce the Geology/Lithology raster for the LSI model")
     if not os.path.exists(os.path.join(output_path, "geology_weight.tif")):
@@ -74,11 +74,6 @@ def geology_raster(geology_dbf, litho_shp, dem, aoi, proj_crs, output_path):
 
         litho_raster = litho_raster.fillna(997)
         litho_raster = rasters.crop(litho_raster, aoi)
-
-        # -- JOIN with Geology_dbf
-        # geology_tif = join_weights(
-        #     litho_raster, geology_dbf, litho_raster.rio.crs, weight_column="Value"
-        # )
 
         def geology_transform(x):
             values = [1, 2, 3, 4, 5]
@@ -107,7 +102,7 @@ def geology_raster(geology_dbf, litho_shp, dem, aoi, proj_crs, output_path):
         return rasters.read(os.path.join(output_path, "geology_weight.tif"))
 
 
-def slope_raster(slope_dbf, dem_b, aoi, proj_crs, output_path):
+def slope_raster(dem_b, aoi, proj_crs, output_path):
     """ """
     LOGGER.info("-- Produce the Slope raster for the LSI model")
     if not os.path.exists(os.path.join(output_path, "slope_weight.tif")):
@@ -128,13 +123,6 @@ def slope_raster(slope_dbf, dem_b, aoi, proj_crs, output_path):
         slope_arr = classify_raster(slope, SLOPE_STEPS, SLOPE_CLASSES)
         slope_d = slope.copy(data=slope_arr).astype(np.float32).rename(slope_name)
         slope_d.attrs["long_name"] = slope_name
-        # -- JOIN with Slope_dbf
-        # slope_gdf = xr_to_gdf(slope_d, proj_crs)
-        # slope_tif = slope_gdf.merge(slope_dbf, on="Value")
-        # slope_tif = slope_tif.set_index(["y", "x"]).Weights.to_xarray()
-        # slope_tif = slope_tif.rio.write_crs(slope_d.rio.crs)
-        # slope_tif = join_weights(slope_d, slope_dbf, proj_crs, weight_column=slope_name)
-        # slope_tif = rasters.crop(slope_tif, aoi)
 
         def slope_transform(x):
             values = [1, 2, 3, 4, 5]
@@ -164,7 +152,6 @@ def slope_raster(slope_dbf, dem_b, aoi, proj_crs, output_path):
 
 
 def landcover_raster(
-    landuse_dbf,
     lulc,
     landcover_name,
     aoi,
@@ -179,18 +166,6 @@ def landcover_raster(
         # Reclassification of LULC for LSI calculation
         landcover_reclass = reclass_landcover(lulc, landcover_name)
         landcover_reclass = landcover_reclass.rio.write_crs(lulc.rio.crs, inplace=True)
-
-        # -- JOIN with Landcover_dbf
-        # landcover_gdf = xr_to_gdf(
-        #     landcover_reclass, lulc.rio.crs, landcover_reclass.name, "Value"
-        # )
-        # lulc_tif = landcover_gdf.merge(landuse_dbf, on="Value")
-        # lulc_tif = lulc_tif.set_index(["y", "x"]).Weights.to_xarray()
-        # lulc_tif = lulc_tif.rio.write_crs(lulc.rio.crs)
-
-        # lulc_tif = join_weights(
-        #     landcover_reclass, landuse_dbf, lulc.rio.crs, weight_column="Value"
-        # )
 
         def landuse_transform(x):
             values = [1, 2, 3, 4, 5, 6]
@@ -225,7 +200,7 @@ def landcover_raster(
         return rasters.read(os.path.join(output_path, "landcover_weight.tif"))
 
 
-def elevation_raster(elevation_dbf, dem_b, aoi, proj_crs, output_path):
+def elevation_raster(dem_b, aoi, proj_crs, output_path):
     """ """
     LOGGER.info("-- Produce the Elevation raster for the LSI model")
     if not os.path.exists(os.path.join(output_path, "elevation_weight.tif")):
@@ -245,17 +220,6 @@ def elevation_raster(elevation_dbf, dem_b, aoi, proj_crs, output_path):
             dem_b.copy(data=elevation_arr).astype(np.float32).rename(elevation_name)
         )
         elevation_d.attrs["long_name"] = elevation_name
-
-        # -- JOIN with Elevation_dbf
-
-        # elevation_gdf = xr_to_gdf(elevation_d, proj_crs)
-        # elevation_tif = elevation_gdf.merge(elevation_dbf, on="Value")
-        # elevation_tif = elevation_tif.set_index(["y", "x"]).Weights.to_xarray()
-        # elevation_tif = elevation_tif.rio.write_crs(elevation_d.rio.crs)
-
-        # elevation_tif = join_weights(
-        #     elevation_d, elevation_dbf, proj_crs, weight_column=elevation_name
-        # )
 
         def elevation_transform(x):
             values = [1, 2, 3, 4, 5]
@@ -285,7 +249,7 @@ def elevation_raster(elevation_dbf, dem_b, aoi, proj_crs, output_path):
 
 
 def hydro_raster_wbw(
-    hydro_dbf, dem_buff, aoi, proj_crs, dem_max, dem_min, output_resolution, tmp_dir
+    dem_buff, aoi, proj_crs, dem_max, dem_min, output_resolution, tmp_dir
 ):
     """
     Make raster of hydro_weights
@@ -308,7 +272,6 @@ def hydro_raster_wbw(
             )
             # no data
             dem_b = xr.where(dem_buff <= -700, FLOAT_NODATA, dem_buff)
-
             dem_b = dem_b.rio.write_crs(proj_crs)
 
             # reproject
@@ -605,7 +568,7 @@ def hydro_raster(
         return rasters.read(os.path.join(tmp_dir, "hydro_weight.tif"))
 
 
-def aspect_raster(aspect_dbf, dem_b, aoi, proj_crs, output_path):
+def aspect_raster(dem_b, aoi, proj_crs, output_path):
     """ """
     LOGGER.info("-- Produce the Aspect raster for the LSI model")
     if not os.path.exists(os.path.join(output_path, "aspect_weight.tif")):
@@ -648,13 +611,6 @@ def aspect_raster(aspect_dbf, dem_b, aoi, proj_crs, output_path):
 
         aspect_reclass_xr = np_to_xr(aspect_reclass, dem_b)
 
-        # JOIN with aspect_dbf
-        # aspect_tif = join_weights(
-        #     aspect_reclass_xr,
-        #     aspect_dbf,
-        #     aspect_reclass_xr.rio.crs,
-        #     weight_column="Value",
-        # )
         def aspect_transform(x):
             values = [1, 2, 3, 4, 5]
             weights = [0.03118, 0.046272, 0.075935, 0.130972, 0.2164]

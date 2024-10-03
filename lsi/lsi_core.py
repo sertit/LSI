@@ -351,7 +351,7 @@ def lsi_core(input_dict: dict) -> None:
             DataPath.WEIGHTS_EUROPE_PATH / "FinalWeigths.dbf"
         )
 
-        geology_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Geology.dbf")
+        # geology_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Geology.dbf")
         global_final_weights_dbf_path = str(
             DataPath.WEIGHTS_GLOBAL_PATH / "Final_weights.dbf"
         )
@@ -361,12 +361,12 @@ def lsi_core(input_dict: dict) -> None:
         lithology_path = str(DataPath.LITHOLOGY_PATH)
 
         # Define weights path
-        geology_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Geology.dbf")
-        slope_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Slope.dbf")
-        elevation_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Elevation.dbf")
-        aspect_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Aspect.dbf")
-        landuse_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Land use.dbf")
-        hydro_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Hydro.dbf")
+        # geology_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Geology.dbf")
+        # slope_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Slope.dbf")
+        # elevation_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Elevation.dbf")
+        # aspect_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Aspect.dbf")
+        # landuse_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Land use.dbf")
+        # hydro_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Hydro.dbf")
         global_final_weights_dbf_path = str(
             DataPath.WEIGHTS_GLOBAL_PATH / "Final_weights.dbf"
         )
@@ -428,11 +428,9 @@ def lsi_core(input_dict: dict) -> None:
         litho_shp = gpd.clip(litho_db, aoi_db)
         litho_shp = litho_shp.to_crs(proj_crs)
 
-        geology_dbf = gpd.read_file(geology_dbf_path)
-        geology_dbf.loc[len(geology_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
-        geology_tif = geology_raster(
-            geology_dbf, litho_shp, dem, aoi, proj_crs, tmp_dir
-        )
+        # geology_dbf = gpd.read_file(geology_dbf_path)
+        # geology_dbf.loc[len(geology_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
+        geology_tif = geology_raster(litho_shp, dem, aoi, proj_crs, tmp_dir)
 
         # -- 2. Landcover + Slope (calculations per zone in the AOI according to ELSUS)
         LOGGER.info("-- Defining physio zones for Europe Refined method")
@@ -614,30 +612,18 @@ def lsi_core(input_dict: dict) -> None:
         litho_shp = gpd.clip(litho_db, aoi_db)
         litho_shp = litho_shp.to_crs(proj_crs)
 
-        # Read weightts
-        geology_dbf = gpd.read_file(geology_dbf_path)
-        geology_dbf.loc[len(geology_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
-
         # Compute Geology layer
-        geology_layer = geology_raster(
-            geology_dbf, litho_shp, dem, aoi, proj_crs, tmp_dir
-        )
+        geology_layer = geology_raster(litho_shp, dem, aoi, proj_crs, tmp_dir)
 
         # -- 2. Slope
-        slope_dbf = gpd.read_file(slope_dbf_path)
-        slope_layer = slope_raster(slope_dbf, dem_b, aoi, proj_crs, tmp_dir)
+        slope_layer = slope_raster(dem_b, aoi, proj_crs, tmp_dir)
 
         # -- 3. Landcover
         lulc = rasters.crop(lulc_path, aoi_b)
         lulc = rasters.collocate(dem_b, lulc, Resampling.nearest)
 
-        # Read landuse weights
-        landuse_dbf = gpd.read_file(landuse_dbf_path)
-        landuse_dbf.loc[len(landuse_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
-
         # Compute landcover layer
         landuse_layer = landcover_raster(
-            landuse_dbf,
             lulc,
             landcover_name,
             aoi,
@@ -649,13 +635,10 @@ def lsi_core(input_dict: dict) -> None:
         landuse_layer = landuse_layer.rio.write_nodata(FLOAT_NODATA)
 
         # -- 4. Elevation
-        elevation_dbf = gpd.read_file(elevation_dbf_path)
-        elevation_layer = elevation_raster(elevation_dbf, dem_b, aoi, proj_crs, tmp_dir)
+        elevation_layer = elevation_raster(dem_b, aoi, proj_crs, tmp_dir)
 
         # -- 5. Hydro
-        hydro_dbf = gpd.read_file(hydro_dbf_path)
         hydro_layer = hydro_raster_wbw(
-            hydro_dbf,
             dem_b,
             aoi,
             proj_crs,
@@ -666,8 +649,7 @@ def lsi_core(input_dict: dict) -> None:
         )
 
         # -- 6. Aspect
-        aspect_dbf = gpd.read_file(aspect_dbf_path)
-        aspect_layer = aspect_raster(aspect_dbf, dem_b, aoi, proj_crs, tmp_dir)
+        aspect_layer = aspect_raster(dem_b, aoi, proj_crs, tmp_dir)
 
         # -- Final weights computing
         fw_dbf = gpd.read_file(global_final_weights_dbf_path)

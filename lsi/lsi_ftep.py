@@ -54,7 +54,7 @@ def compute_lsi():
         InputParameters.OTHER_DEM_PATH.value: None,
         InputParameters.LANDCOVER_NAME.value: params.getString("lulc"),
         InputParameters.EUROPE_METHOD.value: "Refined",
-        InputParameters.OUTPUT_RESOLUTION.value: 10,
+        InputParameters.OUTPUT_RESOLUTION.value: params.getString("res"),
         InputParameters.REF_EPSG.value: None,
         InputParameters.OUTPUT_DIR.value: "/home/worker/workDir/outDir/output",
         InputParameters.TEMP.value: False,

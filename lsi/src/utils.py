@@ -224,6 +224,8 @@ def produce_a_reclass_arr(a_xarr, downsample_factor=200):
     a_xarr_flatten = a_xarr_downsampled.stack(stacked=[...]).values
     a_xarr_finite = a_xarr_flatten[np.isfinite(a_xarr_flatten)]
     nb_class = 5
+    print("nb_classes", nb_class)
+    print("a_xarr_finite", a_xarr_finite)
     breaks = jenkspy.jenks_breaks(a_xarr_finite, nb_class)
 
     # get max value from the a_xarr

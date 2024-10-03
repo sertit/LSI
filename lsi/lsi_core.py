@@ -771,7 +771,7 @@ def lsi_core(input_dict: dict) -> None:
 
     if not temp:
         LOGGER.info("-- Deleting temporary files")
-        shutil.rmtree(tmp_dir)
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
     return
     # raise NotImplementedError

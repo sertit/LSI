@@ -744,14 +744,14 @@ def lsi_core(input_dict: dict) -> None:
         # Post-processing
         # Currently there is an error with the sieving
         lsi_tif_sieved, lsi_vector = raster_postprocess(lsi_tif)
-        vectors.write(lsi_vector, os.path.join(output_path, "lsi.shp"))
+        vectors.write(lsi_vector, os.path.join(output_path, "LandslideSusceptibility.shp"))
 
         # Write in memory
-        rasters.write(lsi_tif, os.path.join(output_path, "lsi.tif"))
+        rasters.write(lsi_tif, os.path.join(output_path, "LandslideSusceptibility.tif"))
     else:
         LOGGER.info("-- Writing LSI in memory")
         # Write in memory LSI with unclassified values
-        rasters.write(lsi_tif, os.path.join(output_path, "lsi_unclassified.tif"))
+        rasters.write(lsi_tif, os.path.join(output_path, "LandslideRisk.tif"))
 
     LOGGER.info("-- Computing LSI statistics for unclassified LSI")
 
@@ -762,12 +762,12 @@ def lsi_core(input_dict: dict) -> None:
     gadm = gpd.overlay(gadm, aoi)
 
     lsi_stats = compute_statistics(
-        gadm, os.path.join(output_path, "lsi_unclassified.tif")
+        gadm, os.path.join(output_path, "LandslideRisk.tif")
     )
 
     LOGGER.info("-- Writing LSI statistics in memory")
     # Write statistics in memory
-    vectors.write(lsi_stats, os.path.join(output_path, "lsi_unclassified_stats.shp"))
+    vectors.write(lsi_stats, os.path.join(output_path, "FER_LR_ave.shp"))
 
     if not temp:
         LOGGER.info("-- Deleting temporary files")

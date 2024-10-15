@@ -242,7 +242,7 @@ def produce_a_reclass_arr(a_xarr, location):  # downsample_factor=200
     # a_xarr_max = a_xarr_max[np.isfinite(a_xarr_max)]
     # breaks[5] = a_xarr_max.max()
 
-    if location == "GLOBAL":
+    if location == "Global":
         breaks = [0, 0.12, 0.15, 0.175, 0.2, 0.35]
     else:  # EUROPE
         breaks = [0, 0.8, 0.10, 0.125, 0.15, 0.30]

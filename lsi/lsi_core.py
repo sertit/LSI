@@ -59,6 +59,7 @@ def geodatastore(ftep=False):
 
     """
     if ftep:
+        os.environ["AWS_VIRTUAL_HOSTING"] = "False"
         return AnyPath("s3://eo4sdg-data")
     else:
         return get_geodatastore()
@@ -473,6 +474,13 @@ def lsi_core(input_dict: dict) -> None:
             zone = row["Zone"]
             db_file = zone_to_dbf[zone]
 
+            LOGGER.info(
+                str(
+                    "* Computing sub-zone: "
+                    + str(zone) + "_" + str(i)
+                )
+            )
+
             # Extracting the shapefile for the Climatic Zone
             zone_geom = gpd.GeoDataFrame(row).T.set_geometry("geometry")
             zone_geom = zone_geom.set_crs(proj_crs)
@@ -706,13 +714,14 @@ def lsi_core(input_dict: dict) -> None:
     )  # There should not be negative values (border effect)
     lsi_tif = lsi_tif.rio.write_crs(proj_crs, inplace=True)
 
+    LOGGER.info("-- Writing LandslideSusceptibility in memory")
+    # Write in memory LSI with unclassified values
+    rasters.write(lsi_tif, os.path.join(output_path, "LandslideSusceptibility.tif"))
+
     if (
         jenks_break
     ):  # Apply jenks only if user requires it (this option takes a longer time)
         # -- LSI reclassification: 1 to 5
-
-        # Write in memory LSI with unclassified values
-        rasters.write(lsi_tif, os.path.join(output_path, "lsi_unclassified.tif"))
 
         LOGGER.info("-- Reclassification of LSI in 5 vulnerability classes")
 
@@ -740,20 +749,21 @@ def lsi_core(input_dict: dict) -> None:
             )  # There should not be 0 values for classes) (border effect)
             lsi_tif = lsi_reclass_tif.rio.write_crs(proj_crs, inplace=True)
 
-        LOGGER.info("-- Writing LSI in memory")
+        LOGGER.info("-- Writing LandslideRisk in memory")
         # Post-processing
         # Currently there is an error with the sieving
         lsi_tif_sieved, lsi_vector = raster_postprocess(lsi_tif)
-        vectors.write(lsi_vector, os.path.join(output_path, "LandslideSusceptibility.shp"))
+
+        
+        # Erase 255 no value
+        lsi_vector = lsi_vector.drop(lsi_vector[lsi_vector["raster_val"] == 255].index).reset_index()
+        vectors.write(lsi_vector, os.path.join(output_path, "LandslideRisk.shp"))
 
         # Write in memory
-        rasters.write(lsi_tif, os.path.join(output_path, "LandslideSusceptibility.tif"))
-    else:
-        LOGGER.info("-- Writing LSI in memory")
-        # Write in memory LSI with unclassified values
-        rasters.write(lsi_tif, os.path.join(output_path, "LandslideRisk.tif"))
+        rasters.write(lsi_tif_sieved # lsi_tif
+                      , os.path.join(output_path, "LandslideRisk.tif"))
 
-    LOGGER.info("-- Computing LSI statistics for unclassified LSI")
+    LOGGER.info("-- Computing LSI statistics for LandslideSusceptibility")
 
     # Read GADM layer and overlay with AOI
     aoi_gadm = aoi.geometry.buffer(GADM_BUFFER)

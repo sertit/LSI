@@ -220,19 +220,26 @@ def produce_a_reclass_arr(a_xarr, downsample_factor=200):
     """
 
     # jenks breaks computation
-    a_xarr_downsampled = a_xarr[:, ::downsample_factor, ::downsample_factor]
-    a_xarr_flatten = a_xarr_downsampled.stack(stacked=[...]).values
-    a_xarr_finite = a_xarr_flatten[np.isfinite(a_xarr_flatten)]
-    nb_class = 5
-    print("nb_classes", nb_class)
-    print("a_xarr_finite", a_xarr_finite)
-    breaks = jenkspy.jenks_breaks(a_xarr_finite, nb_class)
+    try:
+        a_xarr_downsampled = a_xarr[:, ::downsample_factor, ::downsample_factor]
+        a_xarr_flatten = a_xarr_downsampled.stack(stacked=[...]).values
+        a_xarr_finite = a_xarr_flatten[np.isfinite(a_xarr_flatten)]
+        nb_class = 5
+        breaks = jenkspy.jenks_breaks(a_xarr_finite, nb_class)
+    except ValueError: # in case of the downsample is too harsh for smaller AOIs (based on FTEP)
+        downsample_factor = downsample_factor / 3
+        a_xarr_downsampled = a_xarr[:, ::downsample_factor, ::downsample_factor]
+        a_xarr_flatten = a_xarr_downsampled.stack(stacked=[...]).values
+        a_xarr_finite = a_xarr_flatten[np.isfinite(a_xarr_flatten)]
+        nb_class = 5
+        breaks = jenkspy.jenks_breaks(a_xarr_finite, nb_class)
 
     # get max value from the a_xarr
     a_xarr_max = a_xarr.stack(stacked=[...]).values
     a_xarr_max = a_xarr_max[np.isfinite(a_xarr_max)]
     breaks[5] = a_xarr_max.max()
 
+    # breaks = [0, 0.12, 0.15, 0.175, 0.2, 0.35]
     # -- List conditions and choices
     a_arr = a_xarr.data
     conditions = [
@@ -333,9 +340,44 @@ def compute_statistics(gadm_layer, raster_path):
     lsi_stats["FER_LR_ave"] = 0.0
     lsi_stats = lsi_stats[["LEVL_CODE", "NUTS_NAME", "FER_LR_ave", "geometry"]]
 
-    # Copute zonal statistics
+    # Compute zonal statistics
     stats = zonal_stats(lsi_stats, raster_path, stats=["mean"])
 
+    # Add reclassification of Code (1 to 5) and Class (Very low to Severe)
+    def reclassify_code(value):
+        if value >= 0 or value < 0.12:
+            return 1.0
+        elif value >= 0.12 or value < 0.15:
+            return 2.0
+        elif value >= 0.15 or value < 0.175:
+            return 3.0
+        elif value >= 0.175 or value < 0.2:
+            return 4.0
+        elif value >= 0.2 or value < 0.35:
+            return 5.0
+        else:
+            return None
+        
+    def reclassify_class(value):
+        if value == 1:
+            return "Very low"
+        elif value == 2:
+            return "Low"
+        elif value == 3:
+            return "Moderate"
+        elif value == 4:
+            return "High"
+        elif value == 5:
+            return "Severe"
+        else:
+            return None 
+
+    lsi_code = [{'lsi_code': reclassify_code(stat['mean'])} for stat in stats]
+    lsi_class = [{'lsi_class': reclassify_class(lsi['lsi_code'])} for lsi in lsi_code]
+    print(lsi_code)
+    # Write average, code and class to GeoDataFrame
     lsi_stats["FER_LR_ave"] = pd.DataFrame(stats)
+    lsi_stats["FER_LR_code"] = pd.DataFrame(lsi_code)
+    lsi_stats["FER_LR_class"] = pd.DataFrame(lsi_class)
 
     return lsi_stats

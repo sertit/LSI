@@ -11,7 +11,8 @@ from typing import Optional, Union
 
 import dask.array as da
 import geopandas as gpd
-import jenkspy
+
+# import jenkspy
 import numpy as np
 import pandas as pd
 import rasterio
@@ -209,7 +210,7 @@ def compute_flow_accumulation(
     )
 
 
-def produce_a_reclass_arr(a_xarr, downsample_factor=200):
+def produce_a_reclass_arr(a_xarr, location):  # downsample_factor=200
     """
     Produce reclassified a
     Args:
@@ -220,28 +221,31 @@ def produce_a_reclass_arr(a_xarr, downsample_factor=200):
     """
 
     # jenks breaks computation
-    try:
-        a_xarr_downsampled = a_xarr[:, ::downsample_factor, ::downsample_factor]
-        a_xarr_flatten = a_xarr_downsampled.stack(stacked=[...]).values
-        a_xarr_finite = a_xarr_flatten[np.isfinite(a_xarr_flatten)]
-        nb_class = 5
-        breaks = jenkspy.jenks_breaks(a_xarr_finite, nb_class)
-    except (
-        ValueError
-    ):  # in case of the downsample is too harsh for smaller AOIs (based on FTEP)
-        downsample_factor = downsample_factor / 3
-        a_xarr_downsampled = a_xarr[:, ::downsample_factor, ::downsample_factor]
-        a_xarr_flatten = a_xarr_downsampled.stack(stacked=[...]).values
-        a_xarr_finite = a_xarr_flatten[np.isfinite(a_xarr_flatten)]
-        nb_class = 5
-        breaks = jenkspy.jenks_breaks(a_xarr_finite, nb_class)
+    # try:
+    #     a_xarr_downsampled = a_xarr[:, ::downsample_factor, ::downsample_factor]
+    #     a_xarr_flatten = a_xarr_downsampled.stack(stacked=[...]).values
+    #     a_xarr_finite = a_xarr_flatten[np.isfinite(a_xarr_flatten)]
+    #     nb_class = 5
+    #     breaks = jenkspy.jenks_breaks(a_xarr_finite, nb_class)
+    # except (
+    #     ValueError
+    # ):  # in case of the downsample is too harsh for smaller AOIs (based on FTEP)
+    #     downsample_factor = downsample_factor / 3
+    #     a_xarr_downsampled = a_xarr[:, ::downsample_factor, ::downsample_factor]
+    #     a_xarr_flatten = a_xarr_downsampled.stack(stacked=[...]).values
+    #     a_xarr_finite = a_xarr_flatten[np.isfinite(a_xarr_flatten)]
+    #     nb_class = 5
+    #     breaks = jenkspy.jenks_breaks(a_xarr_finite, nb_class)
 
-    # get max value from the a_xarr
-    a_xarr_max = a_xarr.stack(stacked=[...]).values
-    a_xarr_max = a_xarr_max[np.isfinite(a_xarr_max)]
-    breaks[5] = a_xarr_max.max()
+    # # get max value from the a_xarr
+    # a_xarr_max = a_xarr.stack(stacked=[...]).values
+    # a_xarr_max = a_xarr_max[np.isfinite(a_xarr_max)]
+    # breaks[5] = a_xarr_max.max()
 
-    # breaks = [0, 0.12, 0.15, 0.175, 0.2, 0.35]
+    if location == "GLOBAL":
+        breaks = [0, 0.12, 0.15, 0.175, 0.2, 0.35]
+    else:  # EUROPE
+        breaks = [0, 0.8, 0.10, 0.125, 0.15, 0.30]
     # -- List conditions and choices
     a_arr = a_xarr.data
     conditions = [
@@ -303,7 +307,7 @@ def raster_postprocess(x_raster: xr.DataArray) -> gpd.GeoDataFrame:
     return raster_sieved, raster_vectorized
 
 
-def compute_statistics(gadm_layer, raster_path):
+def compute_statistics(gadm_layer, susceptibility_path):
     """
     This function allows the zonal statistics and formatting of the geodataframe
     for the LSI statistics based on Deparments level 0, 1 and 2 for the GADM layer
@@ -343,19 +347,19 @@ def compute_statistics(gadm_layer, raster_path):
     lsi_stats = lsi_stats[["LEVL_CODE", "NUTS_NAME", "FER_LR_ave", "geometry"]]
 
     # Compute zonal statistics
-    stats = zonal_stats(lsi_stats, raster_path, stats=["mean"])
+    stats = zonal_stats(lsi_stats, susceptibility_path, stats=["mean"])
 
     # Add reclassification of Code (1 to 5) and Class (Very low to Severe)
     def reclassify_code(value):
-        if value >= 0 or value < 0.12:
+        if value >= 0 and value < 0.12:
             return 1.0
-        elif value >= 0.12 or value < 0.15:
+        elif value >= 0.12 and value < 0.15:
             return 2.0
-        elif value >= 0.15 or value < 0.175:
+        elif value >= 0.15 and value < 0.175:
             return 3.0
-        elif value >= 0.175 or value < 0.2:
+        elif value >= 0.175 and value < 0.2:
             return 4.0
-        elif value >= 0.2 or value < 0.35:
+        elif value >= 0.2 and value < 0.35:
             return 5.0
         else:
             return None
@@ -376,7 +380,6 @@ def compute_statistics(gadm_layer, raster_path):
 
     lsi_code = [{"lsi_code": reclassify_code(stat["mean"])} for stat in stats]
     lsi_class = [{"lsi_class": reclassify_class(lsi["lsi_code"])} for lsi in lsi_code]
-    print(lsi_code)
     # Write average, code and class to GeoDataFrame
     lsi_stats["FER_LR_ave"] = pd.DataFrame(stats)
     lsi_stats["FER_LR_code"] = pd.DataFrame(lsi_code)

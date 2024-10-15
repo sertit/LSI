@@ -474,7 +474,7 @@ def lsi_core(input_dict: dict) -> None:
             zone = row["Zone"]
             db_file = zone_to_dbf[zone]
 
-            LOGGER.info(str("* Computing sub-zone: " + str(zone) + "_" + str(i)))
+            LOGGER.info(str("-- -- Computing sub-zone: " + str(zone) + "_" + str(i)))
 
             # Extracting the shapefile for the Climatic Zone
             zone_geom = gpd.GeoDataFrame(row).T.set_geometry("geometry")
@@ -723,7 +723,9 @@ def lsi_core(input_dict: dict) -> None:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
 
-            lsi_reclass = produce_a_reclass_arr(lsi_tif, downsample_factor=450)
+            lsi_reclass = produce_a_reclass_arr(
+                lsi_tif, location
+            )  # downsample_factor=450,
 
             # Vectorizing
             lsi_reclass_vector = rasters.vectorize(lsi_reclass)
@@ -768,7 +770,9 @@ def lsi_core(input_dict: dict) -> None:
     gadm = gadm.to_crs(proj_crs)
     gadm = gpd.overlay(gadm, aoi)
 
-    lsi_stats = compute_statistics(gadm, os.path.join(output_path, "LandslideRisk.tif"))
+    lsi_stats = compute_statistics(
+        gadm, os.path.join(output_path, "LandslideSusceptibility.tif")
+    )
 
     LOGGER.info("-- Writing LSI statistics in memory")
     # Write statistics in memory

@@ -226,7 +226,9 @@ def produce_a_reclass_arr(a_xarr, downsample_factor=200):
         a_xarr_finite = a_xarr_flatten[np.isfinite(a_xarr_flatten)]
         nb_class = 5
         breaks = jenkspy.jenks_breaks(a_xarr_finite, nb_class)
-    except ValueError: # in case of the downsample is too harsh for smaller AOIs (based on FTEP)
+    except (
+        ValueError
+    ):  # in case of the downsample is too harsh for smaller AOIs (based on FTEP)
         downsample_factor = downsample_factor / 3
         a_xarr_downsampled = a_xarr[:, ::downsample_factor, ::downsample_factor]
         a_xarr_flatten = a_xarr_downsampled.stack(stacked=[...]).values
@@ -357,7 +359,7 @@ def compute_statistics(gadm_layer, raster_path):
             return 5.0
         else:
             return None
-        
+
     def reclassify_class(value):
         if value == 1:
             return "Very low"
@@ -370,10 +372,10 @@ def compute_statistics(gadm_layer, raster_path):
         elif value == 5:
             return "Severe"
         else:
-            return None 
+            return None
 
-    lsi_code = [{'lsi_code': reclassify_code(stat['mean'])} for stat in stats]
-    lsi_class = [{'lsi_class': reclassify_class(lsi['lsi_code'])} for lsi in lsi_code]
+    lsi_code = [{"lsi_code": reclassify_code(stat["mean"])} for stat in stats]
+    lsi_class = [{"lsi_class": reclassify_class(lsi["lsi_code"])} for lsi in lsi_code]
     print(lsi_code)
     # Write average, code and class to GeoDataFrame
     lsi_stats["FER_LR_ave"] = pd.DataFrame(stats)

@@ -474,12 +474,7 @@ def lsi_core(input_dict: dict) -> None:
             zone = row["Zone"]
             db_file = zone_to_dbf[zone]
 
-            LOGGER.info(
-                str(
-                    "* Computing sub-zone: "
-                    + str(zone) + "_" + str(i)
-                )
-            )
+            LOGGER.info(str("* Computing sub-zone: " + str(zone) + "_" + str(i)))
 
             # Extracting the shapefile for the Climatic Zone
             zone_geom = gpd.GeoDataFrame(row).T.set_geometry("geometry")
@@ -754,14 +749,16 @@ def lsi_core(input_dict: dict) -> None:
         # Currently there is an error with the sieving
         lsi_tif_sieved, lsi_vector = raster_postprocess(lsi_tif)
 
-        
         # Erase 255 no value
-        lsi_vector = lsi_vector.drop(lsi_vector[lsi_vector["raster_val"] == 255].index).reset_index()
+        lsi_vector = lsi_vector.drop(
+            lsi_vector[lsi_vector["raster_val"] == 255].index
+        ).reset_index()
         vectors.write(lsi_vector, os.path.join(output_path, "LandslideRisk.shp"))
 
         # Write in memory
-        rasters.write(lsi_tif_sieved # lsi_tif
-                      , os.path.join(output_path, "LandslideRisk.tif"))
+        rasters.write(
+            lsi_tif_sieved, os.path.join(output_path, "LandslideRisk.tif")  # lsi_tif
+        )
 
     LOGGER.info("-- Computing LSI statistics for LandslideSusceptibility")
 
@@ -771,9 +768,7 @@ def lsi_core(input_dict: dict) -> None:
     gadm = gadm.to_crs(proj_crs)
     gadm = gpd.overlay(gadm, aoi)
 
-    lsi_stats = compute_statistics(
-        gadm, os.path.join(output_path, "LandslideRisk.tif")
-    )
+    lsi_stats = compute_statistics(gadm, os.path.join(output_path, "LandslideRisk.tif"))
 
     LOGGER.info("-- Writing LSI statistics in memory")
     # Write statistics in memory

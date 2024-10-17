@@ -121,6 +121,9 @@ class DataPath:
             / "lithology_epsg4326.tif"  # projected to epsg4326
         )
         cls.GADM_PATH = cls.GLOBAL_DIR / "GADM" / "gadm_410.gdb"
+        cls.COASTLINE_PATH = (
+            cls.GLOBAL_DIR / "Boundaries_coasts_borders_rivers" / "world_coast.shp"
+        )
 
 
 @unique
@@ -252,6 +255,8 @@ def lsi_core(input_dict: dict) -> None:
 
     # Read GADM path for statistics
     gadm_path = str(DataPath.GADM_PATH)
+    # Read Coastline path for cropping AOIs that include water (GLOBAL case)
+    # coastline_path = str(DataPath.COASTLINE_PATH)
 
     # Define folder for temporal files
     tmp_dir = os.path.join(output_path, "temp_dir")
@@ -272,6 +277,10 @@ def lsi_core(input_dict: dict) -> None:
         aoi = gpd.read_file(aoi_raw_path)
     else:
         aoi = vectors.read(aoi_path)
+
+    # Deleting the water from the AOI by overlay with coastline
+    # coastline = vectors.read(coastline_path)
+    # aoi = gpd.overlay(coastline, aoi)
 
     # -- Define EPSG
     if epsg_code:

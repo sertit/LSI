@@ -299,7 +299,7 @@ def raster_postprocess(x_raster: xr.DataArray) -> gpd.GeoDataFrame:
     if not raster_vectorized.empty:
         # Apply MMU
         raster_vectorized["area"] = raster_vectorized.area
-        raster_vectorized = raster_vectorized.loc[raster_vectorized["area"] > MMU]
+        # raster_vectorized = raster_vectorized.loc[raster_vectorized["area"] > MMU]
 
         # # Write
         # raster_vectorized.to_file(vector_path)

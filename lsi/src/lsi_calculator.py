@@ -256,7 +256,7 @@ def hydro_raster_wbw(
     """
     LOGGER.info("-- Produce the Distance to Hydro raster for the LSI model")
     if not os.path.exists(os.path.join(tmp_dir, "hydro_weight.tif")):
-        LOGGER.info("-- -- Preprocessing the DEM for hydro analysis")
+        LOGGER.info("-- -- Preparing the DEM for hydro analysis")
         # -- Pre-process DEM
 
         # Prepare DEM
@@ -282,7 +282,7 @@ def hydro_raster_wbw(
             )
             dem_b = rasters.crop(dem_b, aoi)
 
-        # Write DEM in memory
+        # Write DEM in memory for Whitebox to work
         rasters.write(
             dem_b,
             os.path.join(tmp_dir, "dem_d.tif"),
@@ -294,10 +294,14 @@ def hydro_raster_wbw(
         # -- Hydro processing
         wbe = wbw.WbEnvironment()
 
-        LOGGER.info("-- -- Preprocessing the DEM: Filling Pits")
+        LOGGER.info("-- -- Preparing the DEM: Filling Pits")
         # -- Fill pits
         filled_pits = wbe.fill_pits(wbe.read_raster(os.path.join(tmp_dir, "dem_d.tif")))
-        LOGGER.info("-- -- Preprocessing the DEM: Filling Depressions")
+
+        LOGGER.info("-- -- Preparing the DEM: Filling Depressions")
+        # Write and read using WbW
+        wbe.write_raster(filled_pits, os.path.join(tmp_dir, "filled_pits.tif"))
+        wbe.read_raster(os.path.join(tmp_dir, "filled_pits.tif"))
         # -- Fill depressions
         filled_depressions = wbe.fill_depressions(filled_pits)
 
@@ -658,12 +662,12 @@ def lithology_raster_eu(
     on the BGR's IHME1500
     """
     lithology_weight_dbf = gpd.read_file(lithology_weight_path)
-    lithology_weight_dbf.loc[len(lithology_weight_dbf)] = [
-        997,
-        "Not Applicable",
-        0.0,
-        None,
-    ]
+    # lithology_weight_dbf.loc[len(lithology_weight_dbf)] = [
+    #     997,
+    #     "Not Applicable",
+    #     0.0,
+    #     None,
+    # ]
     aoi_b = geometry.buffer(aoi_zone, BIG_BUFFER)
     # aoi_m = geometry.buffer(aoi_zone, SMALL_BUFFER)
     try:
@@ -783,12 +787,12 @@ def landcover_raster_eu(
         Path for the Landcover Final Weights
     """
     landcover_weight_dbf = gpd.read_file(landcover_weight_path)
-    landcover_weight_dbf.loc[len(landcover_weight_dbf)] = [
-        997,
-        "Not Applicable",
-        0.0,
-        None,
-    ]
+    # landcover_weight_dbf.loc[len(landcover_weight_dbf)] = [
+    #     997,
+    #     "Not Applicable",
+    #     0.0,
+    #     None,
+    # ]
     aoi_b = geometry.buffer(aoi_zone, REGULAR_BUFFER)
     aoi_m = geometry.buffer(aoi_zone, SMALL_BUFFER)
     try:

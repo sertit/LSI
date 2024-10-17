@@ -245,7 +245,7 @@ def produce_a_reclass_arr(a_xarr, location):  # downsample_factor=200
     if location == "Global":
         breaks = [0, 0.12, 0.15, 0.175, 0.2, 0.35]
     else:  # EUROPE
-        breaks = [0, 0.8, 0.10, 0.125, 0.15, 0.30]
+        breaks = [0, 0.8, 0.12, 0.15, 0.175, 0.30]
     # -- List conditions and choices
     a_arr = a_xarr.data
     conditions = [
@@ -256,7 +256,15 @@ def produce_a_reclass_arr(a_xarr, location):  # downsample_factor=200
         (a_arr >= breaks[4]) & (a_arr < breaks[5]),
         (a_arr >= breaks[5]),
     ]
-    choices = [1, 2, 3, 4, 5, 6]
+    choices = [
+        1,
+        2,
+        3,
+        4,
+        5,
+        5,
+    ]  # The last one should be 6, but we set 5 to consider that anything above the last break
+    # is also Severe
 
     a_reclass_arr = da.zeros_like(a_arr, dtype=int)
     for condition, choice in zip(conditions, choices):
@@ -280,7 +288,7 @@ def mosaicing(raster_list, output_path, name):
     return output_path, mosaic_raster
 
 
-def raster_postprocess(x_raster: xr.DataArray) -> gpd.GeoDataFrame:
+def raster_postprocess(x_raster: xr.DataArray, resolution) -> gpd.GeoDataFrame:
     """
     This function allows a postprocessing of sieving and MMU in the LSI raster
     Args:
@@ -292,17 +300,19 @@ def raster_postprocess(x_raster: xr.DataArray) -> gpd.GeoDataFrame:
         Path for the Mosaic raster in xarray format
     """
     # Sieve
-    raster_sieved = rasters.sieve(x_raster, sieve_thresh=SIEVE_THRESH, connectivity=8)
+    raster_sieved = rasters.sieve(
+        x_raster, sieve_thresh=SIEVE_THRESH * resolution, connectivity=8
+    )
 
     # Vectorise
     raster_vectorized = rasters.vectorize(raster_sieved)
-    if not raster_vectorized.empty:
-        # Apply MMU
-        raster_vectorized["area"] = raster_vectorized.area
-        # raster_vectorized = raster_vectorized.loc[raster_vectorized["area"] > MMU]
+    # if not raster_vectorized.empty:
+    # Apply MMU
+    # raster_vectorized["area"] = raster_vectorized.area
+    # raster_vectorized = raster_vectorized.loc[raster_vectorized["area"] > MMU]
 
-        # # Write
-        # raster_vectorized.to_file(vector_path)
+    # # Write
+    # raster_vectorized.to_file(vector_path)
 
     return raster_sieved, raster_vectorized
 
@@ -382,7 +392,7 @@ def compute_statistics(gadm_layer, susceptibility_path):
     lsi_class = [{"lsi_class": reclassify_class(lsi["lsi_code"])} for lsi in lsi_code]
     # Write average, code and class to GeoDataFrame
     lsi_stats["FER_LR_ave"] = pd.DataFrame(stats)
-    lsi_stats["FER_LR_code"] = pd.DataFrame(lsi_code)
-    lsi_stats["FER_LR_class"] = pd.DataFrame(lsi_class)
+    lsi_stats["LR_code"] = pd.DataFrame(lsi_code)
+    lsi_stats["LR_class"] = pd.DataFrame(lsi_class)
 
     return lsi_stats

@@ -739,7 +739,8 @@ def lsi_core(input_dict: dict) -> None:
             # Vectorizing
             lsi_reclass_vector = rasters.vectorize(lsi_reclass)
 
-            # Delete class 6 for values above the max value of LSI
+            # Delete class 6 for values above the max value of LSI (This are cases where the LSI value goes above the
+            # thresholds already defined.)
             lsi_reclass_vector_c = lsi_reclass_vector[
                 lsi_reclass_vector["raster_val"] != 6
             ]
@@ -758,7 +759,9 @@ def lsi_core(input_dict: dict) -> None:
         LOGGER.info("-- Writing LandslideRisk in memory")
         # Post-processing
         # Currently there is an error with the sieving
-        lsi_tif_sieved, lsi_vector = raster_postprocess(lsi_tif)
+        lsi_tif_sieved, lsi_vector = raster_postprocess(
+            lsi_tif, resolution=output_resolution
+        )
 
         # Erase 255 no value
         lsi_vector = lsi_vector.drop(

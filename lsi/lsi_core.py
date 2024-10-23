@@ -122,7 +122,7 @@ class DataPath:
         )
         cls.GADM_PATH = cls.GLOBAL_DIR / "GADM" / "gadm_410.gdb"
         cls.COASTLINE_PATH = (
-            cls.GLOBAL_DIR / "Boundaries_coasts_borders_rivers" / "world_coast.shp"
+            cls.GLOBAL_DIR / "GAUL_2006_coast" / "gaul2006_coast_fixed.shp"
         )
 
 
@@ -253,10 +253,11 @@ def lsi_core(input_dict: dict) -> None:
     temp = input_dict.get(InputParameters.TEMP.value)
     jenks_break = input_dict.get(InputParameters.JENKS.value)
 
+    LOGGER.info("-- Reading inputs")
     # Read GADM path for statistics
     gadm_path = str(DataPath.GADM_PATH)
     # Read Coastline path for cropping AOIs that include water (GLOBAL case)
-    # coastline_path = str(DataPath.COASTLINE_PATH)
+    coastline_path = str(DataPath.COASTLINE_PATH)
 
     # Define folder for temporal files
     tmp_dir = os.path.join(output_path, "temp_dir")
@@ -278,9 +279,13 @@ def lsi_core(input_dict: dict) -> None:
     else:
         aoi = vectors.read(aoi_path)
 
-    # Deleting the water from the AOI by overlay with coastline
-    # coastline = vectors.read(coastline_path)
-    # aoi = gpd.overlay(coastline, aoi)
+    # Removing the open water (or most of it at least) from the AOI by clip with coastline
+    # (!) Only for GLOBAL method as the European method takes into consideration Coastlines
+    # that could be erased for some AOIs where there is a coarser coastline delineation
+    # from the layer used (GAUL 2006)
+    if location == LocationType.GLOBAL.value:
+        coastline = vectors.read(coastline_path, window=aoi)  # read with AOI window
+        aoi = gpd.clip(aoi, coastline)
 
     # -- Define EPSG
     if epsg_code:
@@ -304,6 +309,7 @@ def lsi_core(input_dict: dict) -> None:
     # Store DEM path in a variable
     dem_path = dem_path_dict[dem_name]
 
+    LOGGER.info("-- Reading DEM")
     # Reading and Checking errors in DEM
     try:
         aoi_b = aoi
@@ -334,7 +340,7 @@ def lsi_core(input_dict: dict) -> None:
         x_res, y_res = dem_b.rio.resolution()
         output_resolution = int(np.round(abs((x_res) + abs(y_res) / 2)))
 
-    dem_b = rasters.crop(dem_path, aoi_b)
+    # dem_b = rasters.crop(dem_path, aoi_b) # NOT NECESSARY
 
     # -- Reprojecting DEM
     # DEM will be used as input for SLOPE, ELEVATION, ASPECT and HYDRO layers. Also as reference for Rasterization of Geology Layer.
@@ -344,6 +350,7 @@ def lsi_core(input_dict: dict) -> None:
     dem_b = dem_b.rio.write_nodata(FLOAT_NODATA)
     rasters.write(dem_b, AnyPath(tmp_dir) / "dem_b.tif")
 
+    LOGGER.info("-- Defining weights")
     # -- DEFINING WEIGHT DBF PATHs and LITHOLOGY PATH:
     if location == LocationType.EUROPE.value:
         # Define lithology
@@ -371,12 +378,6 @@ def lsi_core(input_dict: dict) -> None:
         lithology_path = str(DataPath.LITHOLOGY_PATH)
 
         # Define weights path
-        # geology_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Geology.dbf")
-        # slope_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Slope.dbf")
-        # elevation_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Elevation.dbf")
-        # aspect_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Aspect.dbf")
-        # landuse_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Land use.dbf")
-        # hydro_dbf_path = str(DataPath.WEIGHTS_GLOBAL_PATH / "Hydro.dbf")
         global_final_weights_dbf_path = str(
             DataPath.WEIGHTS_GLOBAL_PATH / "Final_weights.dbf"
         )
@@ -432,25 +433,20 @@ def lsi_core(input_dict: dict) -> None:
 
         # -- 1. Geology (to be erased for new Lithology dataset if ELSUS lithology is used)
 
-        # Reading geology database, clip to aoi and reproject to proj_crs
-        litho_db = gpd.read_file(lithology_path, driver="FileGDB", mask=aoi)
-        aoi_db = aoi.to_crs(litho_db.crs)
-        litho_shp = gpd.clip(litho_db, aoi_db)
-        litho_shp = litho_shp.to_crs(proj_crs)
-
         # geology_dbf = gpd.read_file(geology_dbf_path)
         # geology_dbf.loc[len(geology_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
-        geology_tif = geology_raster(litho_shp, dem, aoi, proj_crs, tmp_dir)
+        geology_tif = geology_raster(lithology_path, dem, aoi, proj_crs, tmp_dir)
 
         # -- 2. Landcover + Slope (calculations per zone in the AOI according to ELSUS)
         LOGGER.info("-- Defining physio zones for Europe Refined method")
 
         # -- Read Climate-physiographic zones
-        physio_zones = gpd.read_file(physio_zones_path)
+        physio_zones = gpd.read_file(physio_zones_path, window=aoi)
         physio_zones = physio_zones.to_crs(proj_crs)
         physio_zones_aoi = gpd.clip(physio_zones, aoi)
-        physio_zones_aoi = physio_zones_aoi.explode(index_parts=False)
+        # physio_zones_aoi = physio_zones_aoi.explode(index_parts=False)
 
+        vectors.write(physio_zones_aoi, os.path.join(tmp_dir, "physio_zone_AOI.shp"))
         # Define a mapping of Zones to the Zone_Weights database file
         zone_to_dbf = {
             0: "Zone0",
@@ -462,10 +458,11 @@ def lsi_core(input_dict: dict) -> None:
             6: "Zone6",
         }
 
+        total_zones = physio_zones_aoi["Zone"].count()
         LOGGER.info(
             str(
                 "-- Produce the Landuse, Slope and Lithology raster for the LSI model | Amount of sub-zones to be processed: "
-                + str(physio_zones_aoi["Zone"].count())
+                + str(total_zones)
             )
         )
 
@@ -483,7 +480,16 @@ def lsi_core(input_dict: dict) -> None:
             zone = row["Zone"]
             db_file = zone_to_dbf[zone]
 
-            LOGGER.info(str("-- -- Computing sub-zone: " + str(zone) + "_" + str(i)))
+            LOGGER.info(
+                str(
+                    "-- -- Computing sub-zone type "
+                    + str(zone)
+                    + " | "
+                    + str(i)
+                    + "/"
+                    + str(total_zones)
+                )
+            )
 
             # Extracting the shapefile for the Climatic Zone
             zone_geom = gpd.GeoDataFrame(row).T.set_geometry("geometry")
@@ -609,7 +615,7 @@ def lsi_core(input_dict: dict) -> None:
         lulc_path = landcover_path_dict[landcover_name]
 
         # 0. DEM
-        LOGGER.info("-- Reading DEM")
+        LOGGER.info("-- DEM processing")
 
         dem = rasters.crop(dem_path, aoi)
         dem = dem.rio.reproject(
@@ -618,14 +624,9 @@ def lsi_core(input_dict: dict) -> None:
         dem = dem.rio.write_nodata(FLOAT_NODATA)
 
         # -- 1. Geology
-        # Reading geology database, clip to aoi and reproject to proj_crs
-        litho_db = gpd.read_file(lithology_path, driver="FileGDB", mask=aoi)
-        aoi_db = aoi.to_crs(litho_db.crs)
-        litho_shp = gpd.clip(litho_db, aoi_db)
-        litho_shp = litho_shp.to_crs(proj_crs)
 
         # Compute Geology layer
-        geology_layer = geology_raster(litho_shp, dem, aoi, proj_crs, tmp_dir)
+        geology_layer = geology_raster(lithology_path, dem, aoi, proj_crs, tmp_dir)
 
         # -- 2. Slope
         slope_layer = slope_raster(dem_b, aoi, proj_crs, tmp_dir)
@@ -718,7 +719,7 @@ def lsi_core(input_dict: dict) -> None:
     )  # There should not be negative values (border effect)
     lsi_tif = lsi_tif.rio.write_crs(proj_crs, inplace=True)
 
-    LOGGER.info("-- Writing LandslideSusceptibility in memory")
+    LOGGER.info("-- Writing LandslideSusceptibility.tif in memory")
     # Write in memory LSI with unclassified values
     rasters.write(lsi_tif, os.path.join(output_path, "LandslideSusceptibility.tif"))
 
@@ -732,33 +733,33 @@ def lsi_core(input_dict: dict) -> None:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
 
-            lsi_reclass = produce_a_reclass_arr(
+            lsi_reclass_tif = produce_a_reclass_arr(
                 lsi_tif, location
             )  # downsample_factor=450,
 
-            # Vectorizing
-            lsi_reclass_vector = rasters.vectorize(lsi_reclass)
+            # The vectorizing is
+            # # Vectorizing
+            # lsi_reclass_vector = rasters.vectorize(lsi_reclass_tif)
 
-            # Delete class 6 for values above the max value of LSI (This are cases where the LSI value goes above the
-            # thresholds already defined.)
-            lsi_reclass_vector_c = lsi_reclass_vector[
-                lsi_reclass_vector["raster_val"] != 6
-            ]
+            # # Delete class 6 for values above the max value of LSI (This are cases where the LSI value goes above the
+            # # thresholds already defined.)
+            # lsi_reclass_vector_c = lsi_reclass_vector[
+            #     lsi_reclass_vector["raster_val"] != 6
+            # ]
 
-            # Going back to raster
-            lsi_reclass_tif = rasters.rasterize(
-                lsi_tif, lsi_reclass_vector_c, value_field="raster_val"
-            )
+            # # Going back to raster
+            # lsi_reclass_tif = rasters.rasterize(
+            #     lsi_tif, lsi_reclass_vector_c, value_field="raster_val"
+            # )
 
-            lsi_reclass_tif = rasters.crop(lsi_reclass_tif, aoi)
+            # lsi_reclass_tif = rasters.crop(lsi_reclass_tif, aoi)
             lsi_reclass_tif = xr.where(
                 lsi_reclass_tif == 0, np.nan, lsi_reclass_tif
             )  # There should not be 0 values for classes) (border effect)
             lsi_tif = lsi_reclass_tif.rio.write_crs(proj_crs, inplace=True)
 
-        LOGGER.info("-- Writing LandslideRisk in memory")
+        LOGGER.info("-- Writing LandslideRisk.tif/shp in memory")
         # Post-processing
-        # Currently there is an error with the sieving
         lsi_tif_sieved, lsi_vector = raster_postprocess(
             lsi_tif, resolution=output_resolution
         )
@@ -774,13 +775,13 @@ def lsi_core(input_dict: dict) -> None:
             lsi_tif_sieved, os.path.join(output_path, "LandslideRisk.tif")  # lsi_tif
         )
 
-    LOGGER.info("-- Computing LSI statistics for LandslideSusceptibility")
+    LOGGER.info("-- Computing LSI statistics (FER_LR_av)")
 
     # Read GADM layer and overlay with AOI
     aoi_gadm = aoi.geometry.buffer(GADM_BUFFER)
     gadm = vectors.read(gadm_path, window=aoi_gadm)
     gadm = gadm.to_crs(proj_crs)
-    gadm = gpd.overlay(gadm, aoi)
+    gadm = gpd.clip(gadm, aoi)
 
     lsi_stats = compute_statistics(
         gadm, os.path.join(output_path, "LandslideSusceptibility.tif")

@@ -6,6 +6,7 @@
 """ Utils """
 
 import os
+import warnings
 from enum import Enum
 from typing import Optional, Union
 
@@ -300,9 +301,11 @@ def raster_postprocess(x_raster: xr.DataArray, resolution) -> gpd.GeoDataFrame:
         Path for the Mosaic raster in xarray format
     """
     # Sieve
-    raster_sieved = rasters.sieve(
-        x_raster, sieve_thresh=SIEVE_THRESH * resolution, connectivity=8
-    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        raster_sieved = rasters.sieve(
+            x_raster, sieve_thresh=SIEVE_THRESH, connectivity=8
+        )
 
     # Vectorise
     raster_vectorized = rasters.vectorize(raster_sieved)

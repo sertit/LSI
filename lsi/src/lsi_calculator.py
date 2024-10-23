@@ -34,7 +34,7 @@ LOGGER = logging.getLogger("LSI")
 
 VERY_BIG_BUFFER = 5000
 BIG_BUFFER = 1500
-REGULAR_BUFFER = 500
+REGULAR_BUFFER = 1000
 SMALL_BUFFER = 30
 
 
@@ -64,15 +64,23 @@ def join_weights(xr_raster, weights_dbf, out_crs, weight_column="Value"):
 # --- GLOBAL LSI method functions
 
 
-def geology_raster(litho_shp, dem, aoi, proj_crs, output_path):
+def geology_raster(lithology_path, dem, aoi, proj_crs, output_path):
     """ """
     LOGGER.info("-- Produce the Geology/Lithology raster for the LSI model")
     if not os.path.exists(os.path.join(output_path, "geology_weight.tif")):
+
+        # Reading geology database, clip to aoi and reproject to proj_crs
+        litho_db = vectors.read(lithology_path, window=aoi)
+        aoi_db = aoi.to_crs(litho_db.crs)
+        litho_shp = gpd.clip(litho_db, aoi_db)
+        litho_shp = litho_shp.to_crs(proj_crs)
+
+        # Rasterize Lithology dataset
         litho_raster = rasters.rasterize(
             path_or_ds=dem, vector=litho_shp, value_field="Rating"
         )
 
-        litho_raster = litho_raster.fillna(997)
+        # litho_raster = litho_raster.fillna(997)
         litho_raster = rasters.crop(litho_raster, aoi)
 
         def geology_transform(x):
@@ -804,8 +812,8 @@ def landcover_raster_eu(
     landcover = rasters.collocate(reference_raster, landcover, Resampling.nearest)
     landcover_reclass = reclass_landcover_elsus(landcover, proj_crs, landcover_name)
     landcover_reclass = rasters.crop(landcover_reclass, aoi_m)
-    # JOIN with LULC_dbf
 
+    # JOIN with LULC_dbf
     # landcover_tif = join_weights(
     #     landcover_reclass, landcover_weight_dbf, proj_crs, weight_column="Value"
     # )
@@ -833,7 +841,6 @@ def landcover_raster_eu(
 
     landcover_tif = xr.apply_ufunc(landuse_transform, landcover_reclass, vectorize=True)
     landcover_tif = rasters.crop(landcover_tif, aoi_m)
-
     # Calculating final Weights
     zone_class = "Z" + str(zone_id)  # Class for the zone
     final_weight_factor = final_weight_dbf[final_weight_dbf.Factor == "Landcover"][
@@ -855,10 +862,11 @@ def landcover_raster_eu(
     )
 
     # rasters.write(landcover_tif, temp_dir, compress="deflate", predictor=1)
+    #    landcover_tif = landcover_tif.rio.reproject(
+    #            proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
+    #        )
     rasters.write(
-        landcover_tif.rio.reproject(
-            proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
-        ),
+        landcover_tif,
         temp_dir,
         predictor=1,
     )
@@ -950,10 +958,10 @@ def slope_raster_eu(
 
     slope_tif = xr.where(
         slope_tif > 10, np.nan, slope_tif
-    )  # There should not be values greater than 10 (border effect)
+    )  # There should not be values greater than 10
     slope_tif = xr.where(
         slope_tif < 0, np.nan, slope_tif
-    )  # There should not be negative values (border effect)
+    )  # There should not be negative values
     slope_tif = slope_tif.rio.write_crs(proj_crs, inplace=True)
 
     # Write in memory
@@ -961,10 +969,11 @@ def slope_raster_eu(
         tmp_dir, AnyPath("slope_" + str(zone_id) + "_" + str(counter) + ".tif")
     )
 
+    # slope_tif.rio.reproject(proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
+    # )
+
     rasters.write(
-        slope_tif.rio.reproject(
-            proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
-        ),
+        slope_tif,
         temp_dir,
         predictor=1,
     )

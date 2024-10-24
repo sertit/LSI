@@ -364,32 +364,38 @@ def compute_statistics(gadm_layer, susceptibility_path):
 
     # Add reclassification of Code (1 to 5) and Class (Very low to Severe)
     def reclassify_code(value):
-        if value >= 0 and value < 0.12:
-            return 1.0
-        elif value >= 0.12 and value < 0.15:
-            return 2.0
-        elif value >= 0.15 and value < 0.175:
-            return 3.0
-        elif value >= 0.175 and value < 0.2:
-            return 4.0
-        elif value >= 0.2 and value < 0.35:
-            return 5.0
-        else:
+        try:
+            if value >= 0 and value < 0.12:
+                return 1.0
+            elif value >= 0.12 and value < 0.15:
+                return 2.0
+            elif value >= 0.15 and value < 0.175:
+                return 3.0
+            elif value >= 0.175 and value < 0.2:
+                return 4.0
+            elif value >= 0.2 and value < 0.35:
+                return 5.0
+            else:
+                return None
+        except TypeError:
             return None
 
     def reclassify_class(value):
-        if value == 1:
-            return "Very low"
-        elif value == 2:
-            return "Low"
-        elif value == 3:
-            return "Moderate"
-        elif value == 4:
-            return "High"
-        elif value == 5:
-            return "Severe"
-        else:
-            return None
+        try:
+            if value == 1:
+                return "Very low"
+            elif value == 2:
+                return "Low"
+            elif value == 3:
+                return "Moderate"
+            elif value == 4:
+                return "High"
+            elif value == 5:
+                return "Severe"
+            else:
+                return "No data"
+        except TypeError:
+            return "No data"
 
     lsi_code = [{"lsi_code": reclassify_code(stat["mean"])} for stat in stats]
     lsi_class = [{"lsi_class": reclassify_class(lsi["lsi_code"])} for lsi in lsi_code]

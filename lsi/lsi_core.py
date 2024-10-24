@@ -441,7 +441,7 @@ def lsi_core(input_dict: dict) -> None:
         LOGGER.info("-- Defining physio zones for Europe Refined method")
 
         # -- Read Climate-physiographic zones
-        physio_zones = gpd.read_file(physio_zones_path, window=aoi)
+        physio_zones = vectors.read(physio_zones_path, window=aoi)
         physio_zones = physio_zones.to_crs(proj_crs)
         physio_zones_aoi = gpd.clip(physio_zones, aoi)
         # physio_zones_aoi = physio_zones_aoi.explode(index_parts=False)

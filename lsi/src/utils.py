@@ -42,6 +42,9 @@ PATH_ARR_DS = Union[str, tuple, rasterio.DatasetReader]
 SIEVE_THRESH = 30  # pixels
 MMU = 200  # pixels
 
+BREAKS_GLOBAL = [0, 0.12, 0.15, 0.175, 0.2, 0.35]
+BREAKS_EUROPE = [0, 0.08, 0.12, 0.15, 0.175, 0.30]
+
 
 def xr_to_gdf(
     x_array,
@@ -244,18 +247,18 @@ def produce_a_reclass_arr(a_xarr, location):  # downsample_factor=200
     # breaks[5] = a_xarr_max.max()
 
     if location == "Global":
-        breaks = [0, 0.12, 0.15, 0.175, 0.2, 0.35]
+        breaks = BREAKS_GLOBAL
     else:  # EUROPE
-        breaks = [0, 0.8, 0.12, 0.15, 0.175, 0.30]
+        breaks = BREAKS_EUROPE
     # -- List conditions and choices
     a_arr = a_xarr.data
     conditions = [
-        (a_arr < breaks[1]),
-        (a_arr >= breaks[1]) & (a_arr < breaks[2]),
-        (a_arr >= breaks[2]) & (a_arr < breaks[3]),
-        (a_arr >= breaks[3]) & (a_arr < breaks[4]),
-        (a_arr >= breaks[4]) & (a_arr < breaks[5]),
-        (a_arr >= breaks[5]),
+        (a_arr <= breaks[1]),
+        (a_arr > breaks[1]) & (a_arr <= breaks[2]),
+        (a_arr > breaks[2]) & (a_arr <= breaks[3]),
+        (a_arr > breaks[3]) & (a_arr <= breaks[4]),
+        (a_arr > breaks[4]) & (a_arr <= breaks[5]),
+        (a_arr > breaks[5]),
     ]
     choices = [
         1,
@@ -320,7 +323,7 @@ def raster_postprocess(x_raster: xr.DataArray, resolution) -> gpd.GeoDataFrame:
     return raster_sieved, raster_vectorized
 
 
-def compute_statistics(gadm_layer, susceptibility_path):
+def compute_statistics(gadm_layer, susceptibility_path, location):
     """
     This function allows the zonal statistics and formatting of the geodataframe
     for the LSI statistics based on Deparments level 0, 1 and 2 for the GADM layer
@@ -362,18 +365,23 @@ def compute_statistics(gadm_layer, susceptibility_path):
     # Compute zonal statistics
     stats = zonal_stats(lsi_stats, susceptibility_path, stats=["mean"])
 
+    if location == "Global":
+        breaks = BREAKS_GLOBAL
+    else:  # EUROPE
+        breaks = BREAKS_EUROPE
+
     # Add reclassification of Code (1 to 5) and Class (Very low to Severe)
     def reclassify_code(value):
         try:
-            if value >= 0 and value < 0.12:
+            if value > breaks[0] and value <= breaks[1]:
                 return 1.0
-            elif value >= 0.12 and value < 0.15:
+            elif value > breaks[1] and value <= breaks[2]:
                 return 2.0
-            elif value >= 0.15 and value < 0.175:
+            elif value > breaks[2] and value <= breaks[3]:
                 return 3.0
-            elif value >= 0.175 and value < 0.2:
+            elif value > breaks[3] and value <= breaks[4]:
                 return 4.0
-            elif value >= 0.2 and value < 0.35:
+            elif value > breaks[4] and value <= breaks[5]:
                 return 5.0
             else:
                 return None

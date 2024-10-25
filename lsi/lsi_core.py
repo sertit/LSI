@@ -784,7 +784,7 @@ def lsi_core(input_dict: dict) -> None:
     gadm = gpd.clip(gadm, aoi)
 
     lsi_stats = compute_statistics(
-        gadm, os.path.join(output_path, "LandslideSusceptibility.tif")
+        gadm, os.path.join(output_path, "LandslideSusceptibility.tif"), location
     )
 
     LOGGER.info("-- Writing LSI statistics in memory")

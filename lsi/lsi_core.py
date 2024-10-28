@@ -291,7 +291,12 @@ def lsi_core(input_dict: dict) -> None:
     if epsg_code:
         proj_crs = str("EPSG:" + str(epsg_code))
     else:
-        proj_crs = aoi.estimate_utm_crs()
+        try:
+            proj_crs = aoi.estimate_utm_crs()
+        except ValueError:
+            raise ValueError(
+                "The AOI seems to be corrupted, please check it is not empty and try again."
+            )
 
     # Reproject aoi to UTM crs
     try:  # In some cases the AOI has a corrupted crs
@@ -344,7 +349,7 @@ def lsi_core(input_dict: dict) -> None:
 
     # -- Reprojecting DEM
     # DEM will be used as input for SLOPE, ELEVATION, ASPECT and HYDRO layers. Also as reference for Rasterization of Geology Layer.
-    dem_b = dem_b.rio.reproject(
+    dem_b = dem_b.astype(np.float32).rio.reproject(
         proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
     )
     dem_b = dem_b.rio.write_nodata(FLOAT_NODATA)
@@ -435,6 +440,7 @@ def lsi_core(input_dict: dict) -> None:
 
         # geology_dbf = gpd.read_file(geology_dbf_path)
         # geology_dbf.loc[len(geology_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
+
         geology_tif = geology_raster(lithology_path, dem, aoi, proj_crs, tmp_dir)
 
         # -- 2. Landcover + Slope (calculations per zone in the AOI according to ELSUS)
@@ -626,14 +632,16 @@ def lsi_core(input_dict: dict) -> None:
         # -- 1. Geology
 
         # Compute Geology layer
-        geology_layer = geology_raster(lithology_path, dem, aoi, proj_crs, tmp_dir)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            geology_layer = geology_raster(lithology_path, dem, aoi, proj_crs, tmp_dir)
 
         # -- 2. Slope
-        slope_layer = slope_raster(dem_b, aoi, proj_crs, tmp_dir)
+        slope_layer = slope_raster(dem_b, aoi, tmp_dir)
 
         # -- 3. Landcover
         lulc = rasters.crop(lulc_path, aoi_b)
-        lulc = rasters.collocate(dem_b, lulc, Resampling.nearest)
+        lulc = rasters.collocate(dem_b, lulc.astype(np.float32), Resampling.nearest)
 
         # Compute landcover layer
         landuse_layer = landcover_raster(
@@ -648,7 +656,7 @@ def lsi_core(input_dict: dict) -> None:
         landuse_layer = landuse_layer.rio.write_nodata(FLOAT_NODATA)
 
         # -- 4. Elevation
-        elevation_layer = elevation_raster(dem_b, aoi, proj_crs, tmp_dir)
+        elevation_layer = elevation_raster(dem_b, aoi, tmp_dir)
 
         # -- 5. Hydro
         hydro_layer = hydro_raster_wbw(
@@ -662,7 +670,7 @@ def lsi_core(input_dict: dict) -> None:
         )
 
         # -- 6. Aspect
-        aspect_layer = aspect_raster(dem_b, aoi, proj_crs, tmp_dir)
+        aspect_layer = aspect_raster(dem_b, aoi, tmp_dir)
 
         # -- Final weights computing
         fw_dbf = gpd.read_file(global_final_weights_dbf_path)
@@ -737,31 +745,17 @@ def lsi_core(input_dict: dict) -> None:
                 lsi_tif, location
             )  # downsample_factor=450,
 
-            # The vectorizing is
-            # # Vectorizing
-            # lsi_reclass_vector = rasters.vectorize(lsi_reclass_tif)
-
-            # # Delete class 6 for values above the max value of LSI (This are cases where the LSI value goes above the
-            # # thresholds already defined.)
-            # lsi_reclass_vector_c = lsi_reclass_vector[
-            #     lsi_reclass_vector["raster_val"] != 6
-            # ]
-
-            # # Going back to raster
-            # lsi_reclass_tif = rasters.rasterize(
-            #     lsi_tif, lsi_reclass_vector_c, value_field="raster_val"
-            # )
-
-            # lsi_reclass_tif = rasters.crop(lsi_reclass_tif, aoi)
             lsi_reclass_tif = xr.where(
                 lsi_reclass_tif == 0, np.nan, lsi_reclass_tif
+            ).astype(
+                np.int32
             )  # There should not be 0 values for classes) (border effect)
-            lsi_tif = lsi_reclass_tif.rio.write_crs(proj_crs, inplace=True)
+            lsi_reclass_tif = lsi_reclass_tif.rio.write_crs(proj_crs, inplace=True)
 
         LOGGER.info("-- Writing LandslideRisk.tif/shp in memory")
         # Post-processing
         lsi_tif_sieved, lsi_vector = raster_postprocess(
-            lsi_tif, resolution=output_resolution
+            lsi_reclass_tif, resolution=output_resolution
         )
 
         # Erase 255 no value

@@ -7,8 +7,7 @@
 
 import os
 import warnings
-from enum import Enum
-from typing import Optional, Union
+from typing import Union
 
 import dask.array as da
 import geopandas as gpd
@@ -25,17 +24,6 @@ from rasterstats import zonal_stats
 
 # from rasterio.merge import merge
 from sertit import AnyPath, rasters
-from sertit.types import AnyPathType
-from whitebox import WhiteboxTools
-
-
-class RoutingAlgorithm(Enum):
-    D8 = "d8"
-    DINF = "dinf"
-
-    def __str__(self) -> str:
-        return self.value
-
 
 PATH_ARR_DS = Union[str, tuple, rasterio.DatasetReader]
 
@@ -86,26 +74,6 @@ def np_to_xr(raster, reference_raster, band_name="Value"):
     return raster
 
 
-def initialize_whitebox_tools(
-    whitebox_tools_path: Optional[AnyPathType] = None,
-    is_verbose: bool = False,
-    compress_rasters: bool = True,
-) -> WhiteboxTools:
-    """
-    Function extracted from the Compute_Hand tool from SERTIT.
-    """
-    wbt = WhiteboxTools()
-    wbt.set_verbose_mode(is_verbose)
-    wbt.set_compress_rasters(compress_rasters)
-    wbt.set_default_callback(None)
-    wbt.start_minimized = True
-
-    if whitebox_tools_path is not None:
-        wbt.set_whitebox_dir = str(whitebox_tools_path)
-
-    return wbt
-
-
 # Extracted from hillshade function from sertit package
 def aspect(ds: PATH_ARR_DS):
     """
@@ -132,86 +100,6 @@ def aspect(ds: PATH_ARR_DS):
     # collocate
     aspect = rasters.collocate(ds, aspect, Resampling.bilinear)
     return aspect
-
-
-def compute_flow_direction(
-    input_dtm_path: AnyPathType,
-    output_path: AnyPathType,
-    wbt_instance: WhiteboxTools,
-    routing: RoutingAlgorithm = RoutingAlgorithm.D8,
-) -> None:
-    """
-    Function extracted from the Compute_Hand tool from SERTIT.
-    """
-    # Select routing algorithm
-    if routing == RoutingAlgorithm.D8:
-        method = wbt_instance.d8_pointer
-    elif routing == RoutingAlgorithm.DINF:
-        method = wbt_instance.d_inf_pointer
-    else:
-        raise ValueError(
-            f"Unknown routing algorithm: {routing}. "
-            "It should be either 'd8' or 'dinf'."
-        )
-
-    # Compute flow accumulation
-    method(
-        str(input_dtm_path),
-        str(output_path),
-    )
-
-
-def compute_flow_accumulation(
-    input_dtm_path: AnyPathType,
-    output_path: AnyPathType,
-    wbt_instance: WhiteboxTools,
-    routing: RoutingAlgorithm = RoutingAlgorithm.D8,
-    pointer: bool = False,
-) -> None:
-    """
-    Function extracted from the Compute_Hand tool from SERTIT.
-    Compute flow accumulation from a DTM.
-
-    Parameters
-    ----------
-    input_dtm_path : AnyPathType
-        Path to input DTM raster file.
-    output_path : AnyPathType
-        Path to output flow accumulation file.
-    wbt_instance : WhiteboxTools
-        Instance for Whitebox tools.
-    routing : RoutingAlgorithm, optional
-        Routing algorithm, by default RoutingAlgorithm.D8.
-    apply_ln : bool, optional
-        Whether to apply a natural logarithm transform to the flow accumulation
-        raster, by default False.
-
-    Raises
-    ------
-    ValueError
-        Unknown routing algorithm. It should be either "D8" or "DINF".
-    RuntimeError
-        Failed to compute flow accumulation.
-
-    """
-    # Select routing algorithm
-    if routing == RoutingAlgorithm.D8:
-        method = wbt_instance.d8_flow_accumulation
-    elif routing == RoutingAlgorithm.DINF:
-        method = wbt_instance.d_inf_flow_accumulation
-    else:
-        raise ValueError(
-            f"Unknown routing algorithm: {routing}. "
-            "It should be either 'd8' or 'dinf'."
-        )
-
-    # Compute flow accumulation
-    method(
-        str(input_dtm_path),
-        str(output_path),
-        out_type="cells",
-        pntr=pointer,
-    )
 
 
 def produce_a_reclass_arr(a_xarr, location):  # downsample_factor=200
@@ -274,7 +162,7 @@ def produce_a_reclass_arr(a_xarr, location):  # downsample_factor=200
     for condition, choice in zip(conditions, choices):
         a_reclass_arr = da.where(condition, choice, a_reclass_arr)
 
-    return a_xarr.copy(data=a_reclass_arr)
+    return a_xarr.copy(data=a_reclass_arr).astype(np.int32)
 
 
 def mosaicing(raster_list, output_path, name):

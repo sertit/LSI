@@ -305,6 +305,10 @@ def lsi_core(input_dict: dict) -> None:
         aoi = aoi.set_crs(proj_crs, allow_override=True)
         # aoi = aoi.to_crs(proj_crs)
 
+    # - Write original AOI to file
+    aoi_o_path = os.path.join(tmp_dir, "aoi.shp")
+    aoi.to_file(aoi_o_path)
+
     #  Dict that store dem name and dem path
     dem_path_dict = {
         DemType.COPDEM_30.value: DataPath.COPDEM30_PATH,
@@ -315,10 +319,15 @@ def lsi_core(input_dict: dict) -> None:
     dem_path = dem_path_dict[dem_name]
 
     LOGGER.info("-- Reading DEM")
-    # Reading and Checking errors in DEM
+    # Reading and Checking errors in DEM + Buff AOI
     try:
         aoi_b = aoi
-        aoi_b = aoi_b.geometry.buffer(REGULAR_BUFFER)
+        aoi_b.geometry = aoi_b.geometry.buffer(REGULAR_BUFFER)
+
+        # Export the new aoi
+        aoi_b_path = os.path.join(tmp_dir, "aoi_buffREGULAR.shp")
+        aoi_b.to_file(aoi_b_path)
+
         # dem_b = rasters.read(dem_path, window=aoi_b)
         dem_b = rasters.crop(dem_path, aoi_b)
     except ValueError:
@@ -338,14 +347,15 @@ def lsi_core(input_dict: dict) -> None:
         dem_max = dem_b.max()
         dem_min = dem_b.min()
 
+    aoi = vectors.read(aoi_o_path)
+    aoi_b = vectors.read(aoi_b_path)
+
     # -- Define Resolution
     if output_resolution:
         output_resolution = int(output_resolution)
     else:
         x_res, y_res = dem_b.rio.resolution()
         output_resolution = int(np.round(abs((x_res) + abs(y_res) / 2)))
-
-    # dem_b = rasters.crop(dem_path, aoi_b) # NOT NECESSARY
 
     # -- Reprojecting DEM
     # DEM will be used as input for SLOPE, ELEVATION, ASPECT and HYDRO layers. Also as reference for Rasterization of Geology Layer.
@@ -450,7 +460,6 @@ def lsi_core(input_dict: dict) -> None:
         physio_zones = vectors.read(physio_zones_path, window=aoi)
         physio_zones = physio_zones.to_crs(proj_crs)
         physio_zones_aoi = gpd.clip(physio_zones, aoi)
-        # physio_zones_aoi = physio_zones_aoi.explode(index_parts=False)
 
         vectors.write(physio_zones_aoi, os.path.join(tmp_dir, "physio_zone_AOI.shp"))
         # Define a mapping of Zones to the Zone_Weights database file
@@ -640,8 +649,9 @@ def lsi_core(input_dict: dict) -> None:
         slope_layer = slope_raster(dem_b, aoi, tmp_dir)
 
         # -- 3. Landcover
-        lulc = rasters.crop(lulc_path, aoi_b)
-        lulc = rasters.collocate(dem_b, lulc.astype(np.float32), Resampling.nearest)
+        lulc = rasters.read(lulc_path, window=aoi_b, as_type=np.float32)
+        lulc = rasters.collocate(dem_b, lulc, Resampling.nearest)
+        lulc = rasters.crop(lulc, aoi_b)
 
         # Compute landcover layer
         landuse_layer = landcover_raster(
@@ -741,26 +751,21 @@ def lsi_core(input_dict: dict) -> None:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
 
-            lsi_reclass_tif = produce_a_reclass_arr(
-                lsi_tif, location
-            )  # downsample_factor=450,
-
-            lsi_reclass_tif = xr.where(
-                lsi_reclass_tif == 0, np.nan, lsi_reclass_tif
-            ).astype(
-                np.int32
-            )  # There should not be 0 values for classes) (border effect)
-            lsi_reclass_tif = lsi_reclass_tif.rio.write_crs(proj_crs, inplace=True)
+            lsi_reclass_tif = produce_a_reclass_arr(lsi_tif, location)
 
         LOGGER.info("-- Writing LandslideRisk.tif/shp in memory")
         # Post-processing
         lsi_tif_sieved, lsi_vector = raster_postprocess(
             lsi_reclass_tif, resolution=output_resolution
         )
+        # Set 0 values to NaN
+        lsi_tif_sieved = xr.where(lsi_tif_sieved <= 0, np.nan, lsi_tif_sieved)
+        # There should not be 0 values for classes) (border effect)
+        lsi_tif_sieved = lsi_tif_sieved.rio.write_crs(proj_crs, inplace=True)
 
         # Erase 255 no value
         lsi_vector = lsi_vector.drop(
-            lsi_vector[lsi_vector["raster_val"] == 255].index
+            lsi_vector[lsi_vector["raster_val"].isin([0, 255])].index
         ).reset_index()
         vectors.write(lsi_vector, os.path.join(output_path, "LandslideRisk.shp"))
 
@@ -772,7 +777,8 @@ def lsi_core(input_dict: dict) -> None:
     LOGGER.info("-- Computing LSI statistics (FER_LR_av)")
 
     # Read GADM layer and overlay with AOI
-    aoi_gadm = aoi.geometry.buffer(GADM_BUFFER)
+    aoi_gadm = aoi_b
+    aoi_gadm.geometry = aoi_gadm.geometry.buffer(GADM_BUFFER)
     gadm = vectors.read(gadm_path, window=aoi_gadm)
     gadm = gadm.to_crs(proj_crs)
     gadm = gpd.clip(gadm, aoi)
@@ -784,6 +790,7 @@ def lsi_core(input_dict: dict) -> None:
     LOGGER.info("-- Writing LSI statistics in memory")
     # Write statistics in memory
     vectors.write(lsi_stats, os.path.join(output_path, "FER_LR_ave.shp"))
+    vectors.write(aoi, os.path.join(output_path, "aoi_used.shp"))
 
     if not temp:
         LOGGER.info("-- Deleting temporary files")

@@ -5,15 +5,7 @@
 # You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
 """ lsi : main script with CLI """
 
-import logging
-import sys
-
 import rich_click as click
-from sertit import logs
-from sertit.logs import LOGGING_FORMAT
-from sertit.unistra import unistra_s3
-
-from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
 
 
 @click.command(
@@ -83,7 +75,7 @@ from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
     "--output_resolution",
     help="Output resolution. Taking from DEM if not provided",
     type=click.IntRange(min=1, max=1000),
-    default=10,
+    default=30,
 )
 @click.option(
     "-epsg",
@@ -114,6 +106,7 @@ from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
     help="Set this flag if you want to apply a jenks breaks into 5 LSI classes (It might run for longer time as it's an expensive computation). ",
     default=True,
 )
+@click.version_option()
 def compute_lsi(  # noqa: E304
     aoi,
     location,
@@ -128,6 +121,15 @@ def compute_lsi(  # noqa: E304
     temp,
     jenks,
 ):
+    import logging
+    import sys
+
+    from sertit import logs
+    from sertit.logs import LOGGING_FORMAT
+    from sertit.unistra import unistra_s3
+
+    from lsi.lsi_core import LOGGER, DataPath, InputParameters, lsi_core
+
     logs.init_logger(LOGGER, logging.INFO, LOGGING_FORMAT)
     LOGGER.info("--- LSI ---")
 

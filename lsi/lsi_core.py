@@ -790,7 +790,6 @@ def lsi_core(input_dict: dict) -> None:
     LOGGER.info("-- Writing LSI statistics in memory")
     # Write statistics in memory
     vectors.write(lsi_stats, os.path.join(output_path, "FER_LR_ave.shp"))
-    vectors.write(aoi, os.path.join(output_path, "aoi_used.shp"))
 
     if not temp:
         LOGGER.info("-- Deleting temporary files")

@@ -780,7 +780,9 @@ def lsi_core(input_dict: dict) -> None:
     # Read GADM layer and overlay with AOI
     aoi_gadm = aoi_b
     aoi_gadm.geometry = aoi_gadm.geometry.buffer(GADM_BUFFER)
-    gadm = vectors.read(gadm_path, window=aoi_gadm)
+    with warnings.catch_warnings():  # For cases of polygons with more than 100 parts
+        warnings.simplefilter("ignore")
+        gadm = vectors.read(gadm_path, window=aoi_gadm)
     gadm = gadm.to_crs(proj_crs)
     gadm = gpd.clip(gadm, aoi)
 

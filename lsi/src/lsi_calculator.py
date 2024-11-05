@@ -63,7 +63,11 @@ def geology_raster(lithology_path, dem, aoi, proj_crs, output_path):
     if not os.path.exists(os.path.join(output_path, "geology_weight.tif")):
 
         # Reading geology database, clip to aoi and reproject to proj_crs
-        litho_db = vectors.read(lithology_path, window=aoi)
+        with (
+            warnings.catch_warnings()
+        ):  # For cases of polygons with more than 100 parts
+            warnings.simplefilter("ignore")
+            litho_db = vectors.read(lithology_path, window=aoi)
         aoi_db = aoi.to_crs(litho_db.crs)
         litho_shp = gpd.clip(litho_db, aoi_db)
         litho_shp = litho_shp.to_crs(proj_crs)

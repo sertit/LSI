@@ -649,8 +649,9 @@ def lsi_core(input_dict: dict) -> None:
         slope_layer = slope_raster(dem_b, aoi, tmp_dir)
 
         # -- 3. Landcover
-        lulc = rasters.read(lulc_path, window=aoi_b, as_type=np.float32)
-        lulc = rasters.collocate(dem_b, lulc, Resampling.nearest)
+        # lulc = rasters.read(lulc_path, window=aoi_b, as_type=np.float32)
+        lulc = rasters.crop(lulc_path, aoi_b)
+        lulc = rasters.collocate(dem_b, lulc.astype(np.float32), Resampling.nearest)
         lulc = rasters.crop(lulc, aoi_b)
 
         # Compute landcover layer

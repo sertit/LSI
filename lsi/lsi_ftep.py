@@ -6,7 +6,8 @@
 
 import logging
 import logging.handlers
-import os
+
+# import os
 import sys
 
 import ftep_util as ftep

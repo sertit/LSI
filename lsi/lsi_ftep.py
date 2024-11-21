@@ -19,7 +19,9 @@ DEBUG = False
 LOGGING_FORMAT = "%(asctime)s - [%(levelname)s] - %(message)s"
 LOGGER = logging.getLogger("OSM Charter")
 
-FTEP_S3_ENDPOINT = "s3.waw2-1.cloudferro.com"
+print(os.environ["AWS_ACCESS_KEY_ID"])
+
+FTEP_S3_ENDPOINT = "s3.waw3-1.cloudferro.com"
 
 
 def ftep_s3_env(*args, **kwargs):
@@ -28,7 +30,6 @@ def ftep_s3_env(*args, **kwargs):
 
 @ftep_s3_env
 def compute_lsi():
-    os.environ["AWS_VIRTUAL_HOSTING"] = "False"
 
     parameters_file_path = "/home/worker/workDir/FTEP-WPS-INPUT.properties"
     # Default parameter values

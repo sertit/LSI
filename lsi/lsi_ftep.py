@@ -19,7 +19,7 @@ DEBUG = False
 LOGGING_FORMAT = "%(asctime)s - [%(levelname)s] - %(message)s"
 LOGGER = logging.getLogger("OSM Charter")
 
-print(os.environ["AWS_ACCESS_KEY_ID"])
+# print(os.environ["AWS_ACCESS_KEY_ID"])
 
 FTEP_S3_ENDPOINT = "s3.waw3-1.cloudferro.com"
 

@@ -9,3 +9,4 @@ ci/new/
 venv
 .env
 lib_ext
+.ipynb

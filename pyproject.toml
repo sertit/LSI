@@ -22,24 +22,34 @@ version = "1.1.14"
 
 dependencies = [
     # Libs for all platforms
-    "whitebox",
+    "whitebox_workflow",
     "jenkspy",
 ]
 
-[project.optional-dependencies]
-dev = [
-    # Tests & lint
-    "pre-commit",
-    "black",
-    "flake8",
-    "tempenv",
-    ]
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+]
+ignore = ["E501"]
 
-# compatibility black and isort
-[tool.isort]
-profile = "black"
-known_first_party = ["ci"]
+[tool.ruff.lint.pyupgrade]
+# Preserve types, even if a file imports `from __future__ import annotations`.
+keep-runtime-typing = true
 
-[project.scripts]
-lsi = "lsi.lsi_cli:compute_lsi"
-lsi_ftep = "lsi.lsi_ftep:compute_lsi"
+# Pytest options
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_format = "%(name)s: %(asctime)s - [%(levelname)s] - %(message)s"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+log_cli_level = "INFO"

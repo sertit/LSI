@@ -1,7 +1,7 @@
 import arcpy
 
 
-class Toolbox(object):
+class Toolbox:
     def __init__(self):
         """Define the toolbox (the name of the toolbox is the name of the
         .pyt file)."""
@@ -12,7 +12,7 @@ class Toolbox(object):
         self.tools = [Lsi]
 
 
-class Lsi(object):
+class Lsi:
     def __init__(self):
         """Define the tool (tool name is the name of the class)."""
         self.label = "Lsi"
@@ -139,7 +139,6 @@ class Lsi(object):
         jenks_class.filter.list = ["Yes", "No"]
         jenks_class.value = "Yes"
 
-
         params = [
             aoi,
             location,
@@ -150,7 +149,7 @@ class Lsi(object):
             output_resolution,
             output_folder,
             temp_folder,
-            jenks_class
+            jenks_class,
         ]
 
         return params
@@ -164,16 +163,15 @@ class Lsi(object):
         validation is performed.  This method is called whenever a parameter
         has been changed."""
 
-        if parameters[1].value == "Europe": # Location
-            parameters[2].enabled = True # ELSUS method 
+        if parameters[1].value == "Europe":  # Location
+            parameters[2].enabled = True  # ELSUS method
         else:
             parameters[2].enabled = False
 
-        if parameters[4].value == "Other": # DEM
-            parameters[5].enabled = True # Other DEM path enabling
+        if parameters[4].value == "Other":  # DEM
+            parameters[5].enabled = True  # Other DEM path enabling
         else:
             parameters[5].enabled = False
-
 
         return
 
@@ -199,7 +197,6 @@ class Lsi(object):
             tools_path = str(tools_path.parent.absolute())
         if tools_path not in sys.path:
             sys.path.append(tools_path)
-
 
         main_arcgis(parameters, messages)
         return
@@ -239,13 +236,20 @@ def main_arcgis(parameters, messages):
     To be completed.
     """
     import logging.handlers
-    from sertit.arcpy import init_conda_arcpy_env, ArcPyLogger, ArcPyLogHandler, feature_layer_to_path
+
+    from sertit.arcpy import (
+        ArcPyLogger,
+        ArcPyLogHandler,
+        feature_layer_to_path,
+        init_conda_arcpy_env,
+    )
 
     init_conda_arcpy_env()
 
     from sertit.arcpy import ArcPyLogHandler
+
     from lsi import LOGGER_NAME
-    from lsi.lsi_core import lsi_core, InputParameters, DataPath  # noqa
+    from lsi.lsi_core import DataPath, InputParameters, lsi_core  # noqa
 
     arcpy_logger = ArcPyLogger("LSI")
     logger = logging.getLogger(LOGGER_NAME)
@@ -272,13 +276,13 @@ def main_arcgis(parameters, messages):
     # output = parameters[1].valueAsText
 
     aoi_path = feature_layer_to_path(parameters[0].value)
-    
-    if parameters[8].value == "Yes": # Keep temporal folders?
+
+    if parameters[8].value == "Yes":  # Keep temporal folders?
         temp = True
     else:
         temp = False
 
-    if parameters[9].value == "Yes": # Jenks
+    if parameters[9].value == "Yes":  # Jenks
         jenks = True
     else:
         jenks = False

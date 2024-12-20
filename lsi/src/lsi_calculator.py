@@ -49,8 +49,6 @@ def join_weights(xr_raster, weights_dbf, out_crs, weight_column="Value"):
     except AttributeError:  # ELSUS method uses Weight instead of Weights
         raster_weighted = raster_weighted.set_index(["y", "x"]).Weight.to_xarray()
 
-    # raster_weighted = xr_raster.copy(data=raster_weighted)
-
     return raster_weighted
 
 
@@ -202,7 +200,7 @@ def landcover_raster(
         ).astype(np.float32)
         lulc_tif = lulc_tif.copy(data=lulc_tif).rename("landcover_weight")
 
-        # # Reproject to proj_crs and resolution
+        # Reproject to proj_crs and resolution
         lulc_tif = lulc_tif.rio.reproject(
             proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
         )
@@ -279,7 +277,6 @@ def hydro_raster_wbw(
     LOGGER.info("-- Produce the Distance to Hydro raster for the LSI model")
     if not os.path.exists(os.path.join(tmp_dir, "hydro_weight.tif")):
         LOGGER.info("-- -- Preparing the DEM for hydro analysis")
-        # -- Pre-process DEM
 
         # Prepare DEM
         aoi_b = aoi.geometry.buffer(REGULAR_BUFFER)
@@ -300,7 +297,6 @@ def hydro_raster_wbw(
             # reproject
             dem_b = dem_b.rio.reproject(
                 dst_crs=proj_crs,
-                # nodata=rasters.FLOAT_NODATA,
                 resampling=Resampling.bilinear,
             )
             dem_b = rasters.crop(dem_b, aoi_b)
@@ -393,7 +389,6 @@ def hydro_raster_wbw(
         # Euclidean distance
         euclidean_distance = distance_transform_edt(
             river_streams_inverted
-            # , sampling=profile['transform'][0]
         )
 
         euclidean_distance_xr = np_to_xr(euclidean_distance, dem_b)
@@ -409,13 +404,13 @@ def hydro_raster_wbw(
         euclidean_distance_xr = euclidean_distance_xr * int(output_resolution)
 
         # -- Reclassify
-        ED_STEPS = [0, 100, 200, 300, 400, 20000]  # 5000
+        ED_STEPS = [0, 100, 200, 300, 400, 20000]
         ED_CLASSES = {
-            1: f"{ED_STEPS[0]} - {ED_STEPS[1]}",  #
-            2: f"{ED_STEPS[1]} - {ED_STEPS[2]}",  #
-            3: f"{ED_STEPS[2]} - {ED_STEPS[3]}",  #
-            4: f"{ED_STEPS[3]} - {ED_STEPS[4]}",  #
-            5: f"{ED_STEPS[4]} - {ED_STEPS[5]}",  #
+            1: f"{ED_STEPS[0]} - {ED_STEPS[1]}",
+            2: f"{ED_STEPS[1]} - {ED_STEPS[2]}",
+            3: f"{ED_STEPS[2]} - {ED_STEPS[3]}", 
+            4: f"{ED_STEPS[3]} - {ED_STEPS[4]}", 
+            5: f"{ED_STEPS[4]} - {ED_STEPS[5]}", 
             6: f"{ED_STEPS[5]}",
         }
         ed_class = classify_raster(euclidean_distance_xr, ED_STEPS, ED_CLASSES)
@@ -499,7 +494,6 @@ def aspect_raster(dem_b, aoi, output_path):
         aspect_reclass = xr.where(aspect_reclass == 9, 3, aspect_reclass)  # Northeast
         aspect_reclass = xr.where(aspect_reclass == 10, 2, aspect_reclass)  # North
 
-        # aspect_reclass_xr = np_to_xr(aspect_reclass, dem_b)
         aspect_reclass_xr = (
             aspect_tif.copy(data=aspect_reclass)
             .astype(np.float32)
@@ -538,115 +532,6 @@ def aspect_raster(dem_b, aoi, output_path):
 
 # --- ELSUS LSI method
 
-
-def lithology_raster_eu(
-    lithology_weight_path,
-    lithology_path,
-    # reference_raster,
-    aoi_zone,
-    proj_crs,
-    zone_id,
-    counter,
-    final_weight_dbf,
-    tmp_dir,
-    output_resolution,
-):
-    """
-    NO reclassification is needed as we use directly the lithology data prepared specifically for the ELSUS method based
-    on the BGR's IHME1500
-    """
-    lithology_weight_dbf = gpd.read_file(lithology_weight_path)
-    # lithology_weight_dbf.loc[len(lithology_weight_dbf)] = [
-    #     997,
-    #     "Not Applicable",
-    #     0.0,
-    #     None,
-    # ]
-    aoi_b = geometry.buffer(aoi_zone, BIG_BUFFER)
-    try:
-        lithology = rasters.read(lithology_path)
-        lithology = rasters.crop(lithology, aoi_b)
-    except:  # noqa
-        raise ValueError("Your AOI doesn't cover your Lithology layer.")
-    # print(lithology)
-    lithology = lithology.rio.reproject(proj_crs, resampling=Resampling.bilinear)
-    # lithology = rasters.collocate(reference_raster, lithology, Resampling.bilinear)
-
-    # JOIN with geology_dbf
-    # lithology_tif = join_weights(
-    #     lithology, lithology_weight_dbf, proj_crs, weight_column="Value"
-    # )
-    def geology_transform(x):
-        values = list(lithology_weight_dbf["Value"])
-        weights = list(lithology_weight_dbf["Weight"])
-        if x == float(values[0]):
-            out_value = weights[0]
-        elif x == float(values[1]):
-            out_value = weights[1]
-        elif x == float(values[2]):
-            out_value = weights[2]
-        elif x == float(values[3]):
-            out_value = weights[3]
-        elif x == float(values[4]):
-            out_value = weights[4]
-        elif x == float(values[5]):
-            out_value = weights[5]
-        elif x == float(values[6]):
-            out_value = weights[6]
-        elif x == float(values[7]):
-            out_value = weights[7]
-        elif x == float(values[8]):
-            out_value = weights[8]
-        elif x == float(values[9]):
-            out_value = weights[9]
-        elif x == float(values[10]):
-            out_value = weights[10]
-        elif x == float(values[11]):
-            out_value = weights[11]
-        elif x == float(values[12]):
-            out_value = weights[12]
-        elif x == float(values[13]):
-            out_value = weights[13]
-        elif x == float(values[14]):
-            out_value = weights[14]
-        elif x == float(values[15]):
-            out_value = weights[15]
-        elif x == float(values[16]):
-            out_value = weights[16]
-        elif x == float(values[17]):
-            out_value = weights[17]
-        elif x == float(values[18]):
-            out_value = weights[18]
-        else:
-            out_value = float(0)
-        return out_value
-
-    lithology_tif = xr.apply_ufunc(geology_transform, lithology, vectorize=True)
-    lithology_tif = rasters.crop(lithology_tif, aoi_b)
-
-    # Calculating final Weights
-    zone_class = "Z" + str(zone_id)  # Class for the zone
-    final_weight_factor = final_weight_dbf[final_weight_dbf.Factor == "Lithology"][
-        zone_class
-    ].iloc[0]
-    lithology_tif = lithology_tif * final_weight_factor
-
-    # Write in memory
-    temp_dir = os.path.join(
-        tmp_dir, AnyPath("lithology_" + str(zone_id) + "_" + str(counter) + ".tif")
-    )
-
-    rasters.write(
-        lithology_tif.rio.reproject(
-            proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
-        ),
-        temp_dir,
-        predictor=1,
-    )
-
-    return temp_dir
-
-
 def landcover_raster_eu(
     landcover_weight_path,
     landcover_path,
@@ -657,7 +542,6 @@ def landcover_raster_eu(
     counter,
     final_weight_dbf,
     tmp_dir,
-    output_resolution,
     landcover_name,
 ):
     """
@@ -680,12 +564,6 @@ def landcover_raster_eu(
         Path for the Landcover Final Weights
     """
     landcover_weight_dbf = gpd.read_file(landcover_weight_path)
-    # landcover_weight_dbf.loc[len(landcover_weight_dbf)] = [
-    #     997,
-    #     "Not Applicable",
-    #     0.0,
-    #     None,
-    # ]
     aoi_b = geometry.buffer(aoi_zone, REGULAR_BUFFER)
     aoi_m = geometry.buffer(aoi_zone, SMALL_BUFFER)
     try:
@@ -701,10 +579,6 @@ def landcover_raster_eu(
     landcover_reclass = rasters.crop(landcover_reclass, aoi_m)
 
     # JOIN with LULC_dbf
-    # landcover_tif = join_weights(
-    #     landcover_reclass, landcover_weight_dbf, proj_crs, weight_column="Value"
-    # )
-
     def landuse_transform(x):
         values = list(landcover_weight_dbf["Value"])
         weights = list(landcover_weight_dbf["Weight"])
@@ -752,10 +626,6 @@ def landcover_raster_eu(
         tmp_dir, AnyPath("landcover_" + str(zone_id) + "_" + str(counter) + ".tif")
     )
 
-    # rasters.write(landcover_tif, temp_dir, compress="deflate", predictor=1)
-    #    landcover_tif = landcover_tif.rio.reproject(
-    #            proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
-    #        )
     rasters.write(
         landcover_tif,
         temp_dir,
@@ -774,7 +644,6 @@ def slope_raster_eu(
     counter,
     final_weight_dbf,
     tmp_dir,
-    output_resolution,
 ):
     # -- Slope raster computation
     slope_dbf = gpd.read_file(slope_weight_path)
@@ -810,7 +679,6 @@ def slope_raster_eu(
     slope_d = rasters.crop(slope_d, aoi_b)
 
     # -- JOIN Slope with Weights
-    # slope_tif = join_weights(slope_d, slope_dbf, proj_crs, weight_column=slope_name)
 
     def slope_transform(x):
         values = list(slope_dbf["Value"])
@@ -862,9 +730,6 @@ def slope_raster_eu(
     temp_dir = os.path.join(
         tmp_dir, AnyPath("slope_" + str(zone_id) + "_" + str(counter) + ".tif")
     )
-
-    # slope_tif.rio.reproject(proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
-    # )
 
     rasters.write(
         slope_tif,

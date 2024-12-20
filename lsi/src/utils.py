@@ -112,28 +112,6 @@ def produce_a_reclass_arr(a_xarr, location):  # downsample_factor=200
         xarray of the reclassified a raster
     """
 
-    # jenks breaks computation
-    # try:
-    #     a_xarr_downsampled = a_xarr[:, ::downsample_factor, ::downsample_factor]
-    #     a_xarr_flatten = a_xarr_downsampled.stack(stacked=[...]).values
-    #     a_xarr_finite = a_xarr_flatten[np.isfinite(a_xarr_flatten)]
-    #     nb_class = 5
-    #     breaks = jenkspy.jenks_breaks(a_xarr_finite, nb_class)
-    # except (
-    #     ValueError
-    # ):  # in case of the downsample is too harsh for smaller AOIs (based on FTEP)
-    #     downsample_factor = downsample_factor / 3
-    #     a_xarr_downsampled = a_xarr[:, ::downsample_factor, ::downsample_factor]
-    #     a_xarr_flatten = a_xarr_downsampled.stack(stacked=[...]).values
-    #     a_xarr_finite = a_xarr_flatten[np.isfinite(a_xarr_flatten)]
-    #     nb_class = 5
-    #     breaks = jenkspy.jenks_breaks(a_xarr_finite, nb_class)
-
-    # # get max value from the a_xarr
-    # a_xarr_max = a_xarr.stack(stacked=[...]).values
-    # a_xarr_max = a_xarr_max[np.isfinite(a_xarr_max)]
-    # breaks[5] = a_xarr_max.max()
-
     if location == "Global":
         breaks = BREAKS_GLOBAL
     else:  # EUROPE
@@ -200,13 +178,6 @@ def raster_postprocess(x_raster: xr.DataArray, resolution) -> gpd.GeoDataFrame:
 
     # Vectorise
     raster_vectorized = rasters.vectorize(raster_sieved)
-    # if not raster_vectorized.empty:
-    # Apply MMU
-    # raster_vectorized["area"] = raster_vectorized.area
-    # raster_vectorized = raster_vectorized.loc[raster_vectorized["area"] > MMU]
-
-    # # Write
-    # raster_vectorized.to_file(vector_path)
 
     return raster_sieved, raster_vectorized
 

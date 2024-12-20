@@ -22,7 +22,7 @@ from sertit.misc import ListEnum
 from sertit.rasters import FLOAT_NODATA
 from sertit.unistra import get_geodatastore
 
-from lsi.src.lsi_calculator import (  # lithology_raster_eu,; hydro_raster,
+from lsi.src.lsi_calculator import (
     aspect_raster,
     elevation_raster,
     geology_raster,
@@ -87,15 +87,6 @@ class DataPath:
             / "2019"
             / "PROBAV_LC100_global_v3.0.1_2019-nrt_Discrete-Classification-map_EPSG-4326.tif"
         )
-        cls.ELC_PATH = (
-            cls.GLOBAL_DIR
-            / "2021"
-            / "lulc2021"
-            / "lc2021"
-            / "38T_20230101-20240101.tif"
-            / ".vrt"  # Where to find it??
-        )
-        #        cls.EUDEM_PATH = cls.GLOBAL_DIR / "EUDEM_v2" / "eudem_dem_3035_europe.tif"
         cls.COPDEM30_PATH = cls.GLOBAL_DIR / "COPDEM_30m" / "COPDEM_30m.vrt"
         cls.FABDEM_PATH = cls.GLOBAL_DIR / "FABDEM" / "FABDEM.vrt"
         cls.ELSUS_PATH = (
@@ -113,12 +104,6 @@ class DataPath:
             / "ELSUSv2"
             / "ELSUSv2_six_datasets"
             / "climate_phys_regions.shp"
-        )
-        cls.LITHOLOGY_ELSUS_PATH = (
-            cls.GLOBAL_DIR
-            / "ELSUSv2"
-            / "ELSUSv2_six_datasets"
-            / "lithology_epsg4326.tif"  # projected to epsg4326
         )
         cls.GADM_PATH = cls.GLOBAL_DIR / "GADM" / "gadm_410.gdb"
         cls.COASTLINE_PATH = (
@@ -188,8 +173,6 @@ class LandcoverStructure(ListEnum):
 
     GLC = "Global Land Cover - Copernicus 2019 (100m)"
 
-    ELC = "ESRI Annual Land Cover 2021 (10m)"
-
 
 def check_parameters(input_dict: dir) -> None:
     """
@@ -201,8 +184,6 @@ def check_parameters(input_dict: dir) -> None:
 
     """
     # --- Extract parameters ---
-
-    # aoi_path = input_dict.get(InputParameters.AOI_PATH.value)
     location = input_dict.get(InputParameters.LOCATION)
     dem_name = input_dict.get(InputParameters.DEM_NAME.value)
     other_dem_path = input_dict.get(InputParameters.OTHER_DEM_PATH.value)
@@ -303,7 +284,6 @@ def lsi_core(input_dict: dict) -> None:
         aoi = aoi.to_crs(proj_crs)
     except:  # noqa
         aoi = aoi.set_crs(proj_crs, allow_override=True)
-        # aoi = aoi.to_crs(proj_crs)
 
     # - Write original AOI to file
     aoi_o_path = os.path.join(tmp_dir, "aoi.shp")
@@ -328,7 +308,6 @@ def lsi_core(input_dict: dict) -> None:
         aoi_b_path = os.path.join(tmp_dir, "aoi_buffREGULAR.shp")
         aoi_b.to_file(aoi_b_path)
 
-        # dem_b = rasters.read(dem_path, window=aoi_b)
         dem_b = rasters.crop(dem_path, aoi_b)
     except ValueError:
         raise ValueError(
@@ -370,7 +349,6 @@ def lsi_core(input_dict: dict) -> None:
     if location == LocationType.EUROPE.value:
         # Define lithology
         lithology_path = str(DataPath.LITHOLOGY_PATH)
-        # lithology_path = str(DataPath.LITHOLOGY_ELSUS_PATH)
 
         # Define inputs for ELSUS (inside of Europe) method
         physio_zones_path = str(DataPath.ELSUS_ZONES_PATH)
@@ -447,10 +425,6 @@ def lsi_core(input_dict: dict) -> None:
         dem = rasters.crop(dem_b, aoi)
 
         # -- 1. Geology (to be erased for new Lithology dataset if ELSUS lithology is used)
-
-        # geology_dbf = gpd.read_file(geology_dbf_path)
-        # geology_dbf.loc[len(geology_dbf)] = ["Not Applicable", 997, 0.0, 0.0, None]
-
         geology_tif = geology_raster(lithology_path, dem, aoi, proj_crs, tmp_dir)
 
         # -- 2. Landcover + Slope (calculations per zone in the AOI according to ELSUS)
@@ -538,7 +512,6 @@ def lsi_core(input_dict: dict) -> None:
                 i,
                 fw_dbf,
                 tmp_dir,
-                output_resolution,
                 landcover_name,
             )
             landcover_list.append(landcover_dir)
@@ -558,47 +531,22 @@ def lsi_core(input_dict: dict) -> None:
                 i,
                 fw_dbf,
                 tmp_dir,
-                output_resolution,
             )
             slope_list.append(slope_dir)
-
-            # ---- LITHOLOGY CASE ----
-            # -- Define weights path
-            # lithology_w_path = str(
-            #     elsus_weights_path / str(str(db_file) + "/Lithology_Z" + str(zone) + ".dbf")
-            # )
-            # -- Compute the Rasters
-            # lithology_dir = lithology_raster_eu(
-            #     lithology_w_path,
-            #     lithology_path,
-            #     zone_geom,
-            #     proj_crs,
-            #     zone,
-            #     i,
-            #     fw_dbf,
-            #     tmp_dir,
-            #     output_resolution,
-            # )
-            # lithology_list.append(lithology_dir)
 
         # Mosaicing the rasters by zone available in the lists previously mentioned
         slope_mosaic_path, _ = mosaicing(slope_list, tmp_dir, "slope_weight")
         landcover_mosaic_path, _ = mosaicing(
             landcover_list, tmp_dir, "landcover_weight"
         )
-        # lithology_mosaic_path, _ = mosaicing(
-        #     lithology_list, tmp_dir, "lithology_weight"
-        # )
 
         # Read the mosaiced rasters
         slope_tif = rasters.crop(slope_mosaic_path, aoi)
         landcover_tif = rasters.crop(landcover_mosaic_path, aoi)
-        # lithology_tif = rasters.crop(lithology_mosaic_path, aoi)
 
         # Interpolate landcover and lithology layers to be equivalent to Slope layer
         landcover_tif = landcover_tif.interp_like(slope_tif, method="nearest")
         geology_tif = geology_tif.interp_like(slope_tif, method="nearest")
-        # lithology_tif = lithology_tif.interp_like(slope_tif, method="nearest")
 
         # Collocate Geology for LSI computation
         geology_tif = rasters.collocate(slope_tif, geology_tif, Resampling.bilinear)
@@ -625,7 +573,6 @@ def lsi_core(input_dict: dict) -> None:
             LandcoverType.ESAWC.value: DataPath.ESAWC_PATH,
             LandcoverType.CLC.value: DataPath.CLC_PATH,
             LandcoverType.GLC.value: DataPath.GLC_PATH,
-            LandcoverType.ELC.value: DataPath.ELC_PATH,
         }
         lulc_path = landcover_path_dict[landcover_name]
 
@@ -772,7 +719,7 @@ def lsi_core(input_dict: dict) -> None:
 
         # Write in memory
         rasters.write(
-            lsi_tif_sieved, os.path.join(output_path, "LandslideRisk.tif")  # lsi_tif
+            lsi_tif_sieved, os.path.join(output_path, "LandslideRisk.tif")
         )
 
     LOGGER.info("-- Computing LSI statistics (FER_LR_av)")

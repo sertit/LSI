@@ -2,7 +2,7 @@
 # LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 # LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
-""" Lsi calculator """
+"""Lsi calculator"""
 
 import logging
 import os
@@ -58,7 +58,6 @@ def geology_raster(lithology_path, dem, aoi, proj_crs, output_path):
     """ """
     LOGGER.info("-- Produce the Geology/Lithology raster for the LSI model")
     if not os.path.exists(os.path.join(output_path, "geology_weight.tif")):
-
         # Reading geology database, clip to aoi and reproject to proj_crs
         with (
             warnings.catch_warnings()
@@ -386,9 +385,7 @@ def hydro_raster_wbw(
         river_streams_inverted = np.where(river_streams == nodata, 1, 0)
 
         # Euclidean distance
-        euclidean_distance = distance_transform_edt(
-            river_streams_inverted
-        )
+        euclidean_distance = distance_transform_edt(river_streams_inverted)
 
         euclidean_distance_xr = np_to_xr(euclidean_distance, dem_b)
         euclidean_distance_xr = (
@@ -407,9 +404,9 @@ def hydro_raster_wbw(
         ED_CLASSES = {
             1: f"{ED_STEPS[0]} - {ED_STEPS[1]}",
             2: f"{ED_STEPS[1]} - {ED_STEPS[2]}",
-            3: f"{ED_STEPS[2]} - {ED_STEPS[3]}", 
-            4: f"{ED_STEPS[3]} - {ED_STEPS[4]}", 
-            5: f"{ED_STEPS[4]} - {ED_STEPS[5]}", 
+            3: f"{ED_STEPS[2]} - {ED_STEPS[3]}",
+            4: f"{ED_STEPS[3]} - {ED_STEPS[4]}",
+            5: f"{ED_STEPS[4]} - {ED_STEPS[5]}",
             6: f"{ED_STEPS[5]}",
         }
         ed_class = classify_raster(euclidean_distance_xr, ED_STEPS, ED_CLASSES)
@@ -530,6 +527,7 @@ def aspect_raster(dem_b, aoi, output_path):
 
 
 # --- ELSUS LSI method
+
 
 def landcover_raster_eu(
     landcover_weight_path,

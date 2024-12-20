@@ -2,7 +2,7 @@
 # LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 # LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
-""" lsi_core """
+"""lsi_core"""
 
 import logging
 import os
@@ -725,9 +725,7 @@ def lsi_core(input_dict: dict) -> None:
         vectors.write(lsi_vector, os.path.join(output_path, "LandslideRisk.shp"))
 
         # Write in memory
-        rasters.write(
-            lsi_tif_sieved, os.path.join(output_path, "LandslideRisk.tif")
-        )
+        rasters.write(lsi_tif_sieved, os.path.join(output_path, "LandslideRisk.tif"))
 
     LOGGER.info("-- Computing LSI statistics (FER_LR_av)")
 

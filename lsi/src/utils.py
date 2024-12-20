@@ -2,7 +2,7 @@
 # LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 # LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 # You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
-""" Utils """
+"""Utils"""
 
 import os
 import warnings
@@ -242,21 +242,15 @@ def compute_statistics(gadm_layer, susceptibility_path, location):
             return None
 
     def reclassify_class(value):
-
-        classes = {1: "Very low",
-                   2: "Low",
-                   3: "Moderate",
-                   4: "High",
-                   5: "Severe"
-                   }
+        classes = {1: "Very low", 2: "Low", 3: "Moderate", 4: "High", 5: "Severe"}
         try:
             return classes[value]
-        except: # noqa
+        except:  # noqa
             return "No data"
 
     lsi_code = [{"lsi_code": reclassify_code(stat["mean"])} for stat in stats]
     lsi_class = [{"lsi_class": reclassify_class(lsi["lsi_code"])} for lsi in lsi_code]
-    
+
     # Write average, code and class to GeoDataFrame
     lsi_stats["FER_LR_ave"] = pd.DataFrame(stats)
     lsi_stats["LR_code"] = pd.DataFrame(lsi_code)

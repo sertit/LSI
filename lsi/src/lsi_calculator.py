@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # This file is part of LSI.
 # LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 # LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
@@ -569,7 +568,7 @@ def landcover_raster_eu(
     try:
         landcover = rasters.crop(landcover_path, aoi_b)
     except ValueError:
-        raise ValueError("Your AOI doesn't cover your Landcover layer.")
+        raise ValueError("Your AOI doesn't cover your Landcover layer.") from ValueError
 
     # Reclassification based on ELSUS
     landcover = rasters.collocate(

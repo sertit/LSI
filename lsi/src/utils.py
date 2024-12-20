@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # This file is part of LSI.
 # LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 # LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
@@ -112,10 +111,8 @@ def produce_a_reclass_arr(a_xarr, location):  # downsample_factor=200
         xarray of the reclassified a raster
     """
 
-    if location == "Global":
-        breaks = BREAKS_GLOBAL
-    else:  # EUROPE
-        breaks = BREAKS_EUROPE
+    breaks = BREAKS_GLOBAL if location == "Global" else BREAKS_EUROPE
+
     # -- List conditions and choices
     a_arr = a_xarr.data
     conditions = [
@@ -224,10 +221,7 @@ def compute_statistics(gadm_layer, susceptibility_path, location):
     # Compute zonal statistics
     stats = zonal_stats(lsi_stats, susceptibility_path, stats=["mean"])
 
-    if location == "Global":
-        breaks = BREAKS_GLOBAL
-    else:  # EUROPE
-        breaks = BREAKS_EUROPE
+    breaks = BREAKS_GLOBAL if location == "Global" else BREAKS_EUROPE
 
     # Add reclassification of Code (1 to 5) and Class (Very low to Severe)
     def reclassify_code(value):
@@ -248,24 +242,21 @@ def compute_statistics(gadm_layer, susceptibility_path, location):
             return None
 
     def reclassify_class(value):
+
+        classes = {1: "Very low",
+                   2: "Low",
+                   3: "Moderate",
+                   4: "High",
+                   5: "Severe"
+                   }
         try:
-            if value == 1:
-                return "Very low"
-            elif value == 2:
-                return "Low"
-            elif value == 3:
-                return "Moderate"
-            elif value == 4:
-                return "High"
-            elif value == 5:
-                return "Severe"
-            else:
-                return "No data"
-        except TypeError:
+            return classes[value]
+        except: # noqa
             return "No data"
 
     lsi_code = [{"lsi_code": reclassify_code(stat["mean"])} for stat in stats]
     lsi_class = [{"lsi_class": reclassify_class(lsi["lsi_code"])} for lsi in lsi_code]
+    
     # Write average, code and class to GeoDataFrame
     lsi_stats["FER_LR_ave"] = pd.DataFrame(stats)
     lsi_stats["LR_code"] = pd.DataFrame(lsi_code)

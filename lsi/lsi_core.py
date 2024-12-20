@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # This file is part of LSI.
 # LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 # LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
@@ -277,7 +276,7 @@ def lsi_core(input_dict: dict) -> None:
         except ValueError:
             raise ValueError(
                 "The AOI seems to be corrupted, please check it is not empty and try again."
-            )
+            ) from ValueError
 
     # Reproject aoi to UTM crs
     try:  # In some cases the AOI has a corrupted crs
@@ -312,17 +311,17 @@ def lsi_core(input_dict: dict) -> None:
     except ValueError:
         raise ValueError(
             "Your AOI doesn't cover your DTM. Make sure your input data is valid."
-        )
+        ) from ValueError
     try:
         if np.unique(dem_b) == 0 or np.unique(dem_b) == np.nan:
             raise ValueError(
                 "Your DEM has no elevations. Make sure your input DEM is valid"
-            )
+            ) from ValueError
     except ValueError:
         if np.unique(dem_b).all == 0 or np.unique(dem_b).all == np.nan:
             raise ValueError(
                 "Your DEM has no elevations. Make sure your input DEM is valid"
-            )
+            ) from ValueError
         dem_max = dem_b.max()
         dem_min = dem_b.min()
 
@@ -419,6 +418,12 @@ def lsi_core(input_dict: dict) -> None:
             )
             # -- Define path for LULC
             lulc_path = DataPath.CLC_PATH
+        elif landcover_name == LandcoverType.GLC.value:
+            LOGGER.info(
+                "-- LSI -- Method: Europe Refined layer based on Global Land Cover"
+            )
+            # -- Define path for LULC
+            lulc_path = DataPath.GLC_PATH
 
         # -- 0. DEM
         LOGGER.info("-- Crop DEM")
@@ -463,8 +468,10 @@ def lsi_core(input_dict: dict) -> None:
         landcover_list = []
         slope_list = []
         # lithology_list = []
+        counter = enumerate(physio_zones_aoi.iterrows(), 1)
         for _, row in physio_zones_aoi.iterrows():
-            i += 1
+            # i += 1
+            i = next(counter)[0]
             # The Climatic Zone
             zone = row["Zone"]
             db_file = zone_to_dbf[zone]

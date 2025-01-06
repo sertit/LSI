@@ -18,7 +18,7 @@ class Lsi:
         self.label = "Lsi"
         self.description = ""
         self.canRunInBackground = False
-        self.category = "RRM"
+        self.category = "CEMS RRM"
 
     def getParameterInfo(self):
         """Define parameter definitions"""

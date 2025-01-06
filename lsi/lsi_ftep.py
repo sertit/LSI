@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*-
-# This file is part of LSI.
-# LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-# LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-# You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
+"""
+This file is part of LSI.
+LSI is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
+"""
 
 import logging
 import logging.handlers
@@ -31,7 +32,6 @@ def ftep_s3_env(*args, **kwargs):
 
 @ftep_s3_env
 def compute_lsi():
-
     parameters_file_path = "/home/worker/workDir/FTEP-WPS-INPUT.properties"
     # Default parameter values
     params = ftep.Params(parameters_file_path)

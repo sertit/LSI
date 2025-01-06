@@ -221,10 +221,10 @@ def epsg_from_arcgis_proj(arcgis_proj):
         sr.loadFromString(arcgis_proj)
         epsg_code = sr.factoryCode
 
-    except:
+    except:  # noqa
         raise ValueError(
             "Input coordinate system is not from Arcgis coordinate system tools"
-        )
+        ) from None
 
     return epsg_code
 
@@ -239,14 +239,11 @@ def main_arcgis(parameters, messages):
 
     from sertit.arcpy import (
         ArcPyLogger,
-        ArcPyLogHandler,
         feature_layer_to_path,
         init_conda_arcpy_env,
     )
 
     init_conda_arcpy_env()
-
-    from sertit.arcpy import ArcPyLogHandler
 
     from lsi import LOGGER_NAME
     from lsi.lsi_core import DataPath, InputParameters, lsi_core  # noqa
@@ -277,15 +274,9 @@ def main_arcgis(parameters, messages):
 
     aoi_path = feature_layer_to_path(parameters[0].value)
 
-    if parameters[8].value == "Yes":  # Keep temporal folders?
-        temp = True
-    else:
-        temp = False
+    temp = parameters[8].value == "Yes"  # Keep temporal folders?
 
-    if parameters[9].value == "Yes":  # Jenks
-        jenks = True
-    else:
-        jenks = False
+    jenks = parameters[9].value == "Yes"  # Jenks
 
     # --- Parameters ---
     # Load inputs

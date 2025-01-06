@@ -4,6 +4,7 @@ LSI is free software: you can redistribute it and/or modify it under the terms o
 LSI is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along with LSI. If not, see <https://www.gnu.org/licenses/>.
 """
+
 """lsi_core"""
 
 import logging
@@ -219,6 +220,8 @@ def lsi_core(input_dict: dict) -> None:
         dict : Dict that store raster to be processed for LSI
         copmputation
     """
+
+    LOGGER.info(f"*** Tool version: {__version__} ***")
     # --- Check parameters ---
     check_parameters(input_dict)
 

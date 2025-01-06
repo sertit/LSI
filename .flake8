@@ -1,4 +1,0 @@
-# compatibility black and flake8
-[flake8]
-max-line-length = 88
-extend-ignore = E203

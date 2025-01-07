@@ -15,7 +15,6 @@ from enum import unique
 
 import geopandas as gpd
 import numpy as np
-
 import xarray as xr
 from rasterio.enums import Resampling
 from sertit import AnyPath, rasters, vectors

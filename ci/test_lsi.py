@@ -10,16 +10,49 @@ You should have received a copy of the GNU General Public License along with LSI
 import os
 import tempfile
 
-from sertit import ci  # noqa
+from sertit import AnyPath, ci  # noqa
+from sertit.unistra import s3_env
+
+from lsi.lsi_core import DataPath, lsi_core
+
+ci.reduce_verbosity()
+
+os.environ["USE_S3_STORAGE"] = "1"
+os.environ["AWS_S3_ENDPOINT"] = "s3.unistra.fr"
 
 
-def get_ci_path():
-    """Get ci DATA path"""
-    return os.path.dirname(os.path.realpath(__file__))
+@s3_env
+def test_lsi_global():
+    ci_path = AnyPath("s3://sertit-ci") / "lsi" / "Test_Austria"
+    aoi_path = ci_path / "AOI" / "ci_aoi_salzburg.shp"
+    expected_output_tif = (
+        ci_path / "out_expected" / "GLOBAL" / "LandslideSusceptibility.tif"
+    )
+    expected_output_shp = ci_path / "out_expected" / "GLOBAL" / "FER_LR_ave.shp"
 
+    assert expected_output_tif.exists()
+    assert expected_output_shp.exists()
 
-def test_xxx():
-    """Test WGS84 + core"""
-    xxx_path = os.path.join(get_ci_path(), "xxx")  # noqa
-    with tempfile.TemporaryDirectory() as tmp:  # noqa
-        pass
+    with tempfile.TemporaryDirectory() as output:
+        input_dict = {
+            "aoi": str(aoi_path),
+            "location": "Global",
+            "dem_name": "COPDEM 30m",
+            "landcover_name": "ESA WorldCover - 2021 (10m)",
+            "europe_method": "Refined",  # Not relevant for this test
+            "output_resolution": 30,
+            "temp": False,  # Don't keep temporary files
+            "jenks": True,  # Apply jenks breaks to compute LandslideRisk
+            "output_path": output,
+        }
+        DataPath.load_paths()
+        lsi_core(input_dict=input_dict)
+
+        output_classification_tif = os.path.join(output, "LandslideSusceptibility.tif")
+        output_classification_shp = os.path.join(output, "FER_LR_ave.shp")
+        ci.assert_raster_max_mismatch(
+            expected_output_tif, output_classification_tif, max_mismatch_pct=3
+        )
+        ci.assert_raster_max_mismatch(
+            expected_output_shp, output_classification_shp, max_mismatch_pct=3
+        )

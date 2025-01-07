@@ -16,7 +16,6 @@ from enum import unique
 import geopandas as gpd
 import numpy as np
 
-# import rasterio as rio
 import xarray as xr
 from rasterio.enums import Resampling
 from sertit import AnyPath, rasters, vectors
@@ -24,6 +23,7 @@ from sertit.misc import ListEnum
 from sertit.rasters import FLOAT_NODATA
 from sertit.unistra import get_geodatastore
 
+from lsi import __version__
 from lsi.src.lsi_calculator import (
     aspect_raster,
     elevation_raster,

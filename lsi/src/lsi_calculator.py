@@ -92,7 +92,7 @@ def geology_raster(lithology_path, dem, aoi, proj_crs, output_path):
             return out_value
 
         geology_tif = xr.apply_ufunc(
-            geology_transform, litho_raster, vectorize=True
+            geology_transform, litho_raster.compute(), vectorize=True
         ).astype(np.float32)
         geology_tif = geology_tif.copy(data=geology_tif).rename("geology_weight")
         geology_tif = rasters.crop(geology_tif, aoi)
@@ -145,9 +145,9 @@ def slope_raster(dem_b, aoi, output_path):
                 out_value = float(0)
             return out_value
 
-        slope_tif = xr.apply_ufunc(slope_transform, slope_d, vectorize=True).astype(
-            np.float32
-        )
+        slope_tif = xr.apply_ufunc(
+            slope_transform, slope_d.compute(), vectorize=True
+        ).astype(np.float32)
         slope_tif = slope_tif.copy(data=slope_tif).rename("slope_weight")
         slope_tif = rasters.crop(slope_tif, aoi)
 
@@ -194,7 +194,7 @@ def landcover_raster(
             return out_value
 
         lulc_tif = xr.apply_ufunc(
-            landuse_transform, landcover_reclass, vectorize=True
+            landuse_transform, landcover_reclass.compute(), vectorize=True
         ).astype(np.float32)
         lulc_tif = lulc_tif.copy(data=lulc_tif).rename("landcover_weight")
 
@@ -435,9 +435,9 @@ def hydro_raster_wbw(
                 out_value = float(0)
             return out_value
 
-        hydro_tif = xr.apply_ufunc(hydro_transform, ed_reclass, vectorize=True).astype(
-            np.float32
-        )
+        hydro_tif = xr.apply_ufunc(
+            hydro_transform, ed_reclass.compute(), vectorize=True
+        ).astype(np.float32)
         hydro_tif = hydro_tif.copy(data=hydro_tif).rename("hydro_weight")
 
         hydro_tif = hydro_tif.rio.reproject(
@@ -514,7 +514,7 @@ def aspect_raster(dem_b, aoi, output_path):
             return out_value
 
         aspect_tif = xr.apply_ufunc(
-            aspect_transform, aspect_reclass_xr, vectorize=True
+            aspect_transform, aspect_reclass_xr.compute(), vectorize=True
         ).astype(np.float32)
         aspect_tif = aspect_tif.copy(data=aspect_tif).rename("aspect_weight")
         aspect_tif = rasters.crop(aspect_tif, aoi)
@@ -598,7 +598,7 @@ def landcover_raster_eu(
         return out_value
 
     landcover_tif = xr.apply_ufunc(
-        landuse_transform, landcover_reclass, vectorize=True
+        landuse_transform, landcover_reclass.compute(), vectorize=True
     ).astype(np.float32)
     landcover_tif = landcover_tif.copy(data=landcover_tif).rename("landcover_weight")
 
@@ -700,9 +700,9 @@ def slope_raster_eu(
             out_value = float(0)
         return out_value
 
-    slope_tif = xr.apply_ufunc(slope_transform, slope_d, vectorize=True).astype(
-        np.float32
-    )
+    slope_tif = xr.apply_ufunc(
+        slope_transform, slope_d.compute(), vectorize=True
+    ).astype(np.float32)
     slope_tif = slope_tif.copy(data=slope_tif).rename("slope_weight")
     slope_tif = rasters.crop(slope_tif, aoi_m)
 

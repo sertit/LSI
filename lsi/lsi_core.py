@@ -304,14 +304,15 @@ def lsi_core(input_dict: dict) -> None:
     LOGGER.info("-- Reading DEM")
     # Reading and Checking errors in DEM + Buff AOI
     try:
-        aoi_b = aoi
+        aoi_b = aoi.copy()
         aoi_b.geometry = aoi_b.geometry.buffer(REGULAR_BUFFER)
 
         # Export the new aoi
         aoi_b_path = os.path.join(tmp_dir, "aoi_buffREGULAR.shp")
         aoi_b.to_file(aoi_b_path)
 
-        dem_b = rasters.crop(dem_path, aoi_b)
+        dem_b = rasters.read(dem_path, window=aoi_b)
+        dem_b = rasters.crop(dem_b.copy(), aoi_b)
     except ValueError:
         raise ValueError(
             "Your AOI doesn't cover your DTM. Make sure your input data is valid."
@@ -347,9 +348,11 @@ def lsi_core(input_dict: dict) -> None:
     dem_b = dem_b.rio.write_nodata(FLOAT_NODATA)
     rasters.write(dem_b, AnyPath(tmp_dir) / "dem_b.tif")
 
-    LOGGER.info("-- Defining weights")
-    # -- DEFINING WEIGHT DBF PATHs and LITHOLOGY PATH:
+    # --  LSI COMPUTATION ACCORDING TO METHOD
+    # -- Check location (EUROPE or GLOBAL)
     if location == LocationType.EUROPE.value:
+        LOGGER.info("-- LSI - LOCATION : EUROPE")
+
         # Define lithology
         lithology_path = str(DataPath.LITHOLOGY_PATH)
 
@@ -369,19 +372,6 @@ def lsi_core(input_dict: dict) -> None:
             DataPath.WEIGHTS_GLOBAL_PATH / "Final_weights.dbf"
         )
 
-    elif location == LocationType.GLOBAL.value:
-        # Define lithology
-        lithology_path = str(DataPath.LITHOLOGY_PATH)
-
-        # Define weights path
-        global_final_weights_dbf_path = str(
-            DataPath.WEIGHTS_GLOBAL_PATH / "Final_weights.dbf"
-        )
-
-    # --  LSI COMPUTATION ACCORDING TO METHOD
-    # -- Check location (EUROPE or OUTSIDE of Europe)
-    if location == LocationType.EUROPE.value:
-        LOGGER.info("-- LSI - LOCATION : EUROPE")
         LOGGER.info(
             "-- LSI - CRS: "
             + str(proj_crs)
@@ -573,6 +563,14 @@ def lsi_core(input_dict: dict) -> None:
 
     elif location == LocationType.GLOBAL.value:
         LOGGER.info("-- LSI - LOCATION : GLOBAL")
+        # Define lithology
+        lithology_path = str(DataPath.LITHOLOGY_PATH)
+
+        # Define weights path
+        global_final_weights_dbf_path = str(
+            DataPath.WEIGHTS_GLOBAL_PATH / "Final_weights.dbf"
+        )
+
         LOGGER.info(
             "-- LSI - CRS: "
             + str(proj_crs)
@@ -590,7 +588,7 @@ def lsi_core(input_dict: dict) -> None:
         # 0. DEM
         LOGGER.info("-- DEM processing")
 
-        dem = rasters.crop(dem_path, aoi)
+        dem = rasters.crop(dem_b.copy(), aoi)
         dem = dem.rio.reproject(
             proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
         )
@@ -607,8 +605,8 @@ def lsi_core(input_dict: dict) -> None:
         slope_layer = slope_raster(dem_b, aoi, tmp_dir)
 
         # -- 3. Landcover
-        # lulc = rasters.read(lulc_path, window=aoi_b, as_type=np.float32)
-        lulc = rasters.crop(lulc_path, aoi_b)
+        lulc = rasters.read(lulc_path, window=aoi_b, as_type=np.float32)
+        lulc = rasters.crop(lulc.copy(), aoi_b)
         lulc = rasters.collocate(dem_b, lulc.astype(np.float32), Resampling.nearest)
         lulc = rasters.crop(lulc, aoi_b)
 
@@ -747,6 +745,7 @@ def lsi_core(input_dict: dict) -> None:
     )
 
     LOGGER.info("-- Writing LSI statistics in memory")
+
     # Write statistics in memory
     vectors.write(lsi_stats, os.path.join(output_path, "FER_LR_ave.shp"))
 

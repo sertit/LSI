@@ -20,8 +20,6 @@ ci.reduce_verbosity()
 
 os.environ["USE_S3_STORAGE"] = "1"
 os.environ["AWS_S3_ENDPOINT"] = "s3.unistra.fr"
-os.environ["AWS_ACCESS_KEY_ID"] = "G8YRL7SYIZJ6YN2Q787X"
-os.environ["AWS_SECRET_ACCESS_KEY"] = "40yTOFoJFFy1R2mgE1GlAyp13Mquu8a4tJdKDpzL"
 
 
 def get_ci_path() -> AnyPathType:

@@ -564,7 +564,8 @@ def landcover_raster_eu(
     aoi_b = geometry.buffer(aoi_zone, REGULAR_BUFFER)
     aoi_m = geometry.buffer(aoi_zone, SMALL_BUFFER)
     try:
-        landcover = rasters.crop(landcover_path, aoi_b)
+        landcover = rasters.read(landcover_path, window=aoi_b)
+        landcover = rasters.crop(landcover.copy(), aoi_b)
     except ValueError:
         raise ValueError("Your AOI doesn't cover your Landcover layer.") from ValueError
 

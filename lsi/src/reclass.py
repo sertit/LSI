@@ -56,579 +56,164 @@ def classify_raster(raster, raster_steps, raster_classes):
 
 def reclass_landcover(landcover, landcover_name):
     """
-    This function returns the landcover reclassified from ESA WorldCover / Corine Land Cover to the Final Weights Standard
-    for the LSI calculation in the GLOBAL standard.
+    Reclassify landcover data from ESA WorldCover / Corine Land Cover / Global Copernicus / ESRI Land Cover
+    to the Final Weights Standard for LSI calculation in the GLOBAL standard.
+
     Args:
-        landcover: landcover xarray
-        landcover_name: Name of the Landcover to be reclassified
+        landcover: xarray.DataArray containing landcover data
+        landcover_name: Name of the landcover type (from LandcoverType Enum)
     Returns:
-        landcover xarray reclassified
+        xarray.DataArray with reclassified landcover values
     """
-    if landcover_name == LandcoverType.ESAWC.value:
-        # Reclassification of LULC for ESA WorldCover
-        landcover_reclass = xr.where(
-            landcover == 10, 3, landcover
-        )  # Tree cover -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 20, 3, landcover_reclass
-        )  # Shrubland -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 30, 2, landcover_reclass
-        )  # Grassland -> Grassland
-        landcover_reclass = xr.where(
-            landcover_reclass == 40, 1, landcover_reclass
-        )  # Cropland -> Arable land
-        landcover_reclass = xr.where(
-            landcover_reclass == 50, 5, landcover_reclass
-        )  # Built-up -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 60, 4, landcover_reclass
-        )  # Bare/Sparse vegetation -> Bare
-        landcover_reclass = xr.where(
-            landcover_reclass == 70, 997, landcover_reclass
-        )  # Snow and ice -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 80, 6, landcover_reclass
-        )  # Permanent water bodies -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 90, 997, landcover_reclass
-        )  # Herbaceous wetland -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 95, 997, landcover_reclass
-        )  # Mangroves -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 100, 2, landcover_reclass
-        )  # Moss and lichen -> Grassland
 
-    elif landcover_name == LandcoverType.CLC.value:
-        # Reclassification of LULC for Corine Land Cover
-        landcover_reclass = xr.where(
-            landcover == 111, 5, landcover
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 112, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 121, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 122, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 123, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 124, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 131, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 132, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 133, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 141, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 142, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 211, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 212, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 213, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 221, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 222, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 223, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 231, 2, landcover_reclass
-        )  # Pasture/Meadow -> Grassland
-        landcover_reclass = xr.where(
-            landcover_reclass == 241, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 242, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 243, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 244, 3, landcover_reclass
-        )  # Open Forest -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 311, 3, landcover_reclass
-        )  # Closed Forest -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 312, 3, landcover_reclass
-        )  # Closed Forest -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 313, 3, landcover_reclass
-        )  # Closed Forest -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 321, 2, landcover_reclass
-        )  # Pasture/Meadow -> Grassland
-        landcover_reclass = xr.where(
-            landcover_reclass == 322, 2, landcover_reclass
-        )  # Shrub -> Grassland
-        landcover_reclass = xr.where(
-            landcover_reclass == 323, 2, landcover_reclass
-        )  # Shrub -> Grassland
-        landcover_reclass = xr.where(
-            landcover_reclass == 324, 3, landcover_reclass
-        )  # Open Forest -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 331, 4, landcover_reclass
-        )  # Bare -> Bare
-        landcover_reclass = xr.where(
-            landcover_reclass == 332, 4, landcover_reclass
-        )  # Bare -> Bare
-        landcover_reclass = xr.where(
-            landcover_reclass == 333, 4, landcover_reclass
-        )  # Bare -> Bare
-        landcover_reclass = xr.where(
-            landcover_reclass == 334, 4, landcover_reclass
-        )  # Bare -> Bare
-        landcover_reclass = xr.where(
-            landcover_reclass == 335, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 411, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 412, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 421, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 422, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 423, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 511, 6, landcover_reclass
-        )  # Not applicable -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 512, 6, landcover_reclass
-        )  # Not applicable -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 521, 6, landcover_reclass
-        )  # Not applicable -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 522, 6, landcover_reclass
-        )  # Not applicable -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 523, 6, landcover_reclass
-        )  # Not applicable -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 999, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
+    # Mapping definitions for reclassification
+    reclassification_rules = {
+        LandcoverType.ESAWC.value: {
+            10: 3,
+            20: 3,
+            30: 2,
+            40: 1,
+            50: 5,
+            60: 4,
+            70: 997,
+            80: 6,
+            90: 997,
+            95: 997,
+            100: 2,
+        },
+        LandcoverType.CLC.value: {
+            **{k: 5 for k in [111, 112, 121, 122, 123, 124, 131, 132, 133, 141, 142]},
+            **{k: 1 for k in [211, 212, 213, 221, 222, 223, 241, 242, 243]},
+            231: 2,
+            244: 3,
+            **{k: 3 for k in [311, 312, 313, 324]},
+            **{k: 2 for k in [321, 322, 323]},
+            **{k: 4 for k in [331, 332, 333, 334]},
+            **{k: 997 for k in [335, 411, 412, 421, 422, 423, 999]},
+            **{k: 6 for k in [511, 512, 521, 522, 523]},
+        },
+        LandcoverType.GLC.value: {
+            0: 997,
+            20: 2,
+            30: 2,
+            40: 1,
+            50: 5,
+            60: 4,
+            70: 997,
+            80: 6,
+            90: 6,
+            100: 2,
+            **{
+                k: 3
+                for k in [111, 112, 113, 114, 115, 116, 121, 122, 123, 124, 125, 126]
+            },
+        },
+        LandcoverType.ELC.value: {
+            1: 6,
+            2: 3,
+            4: 997,
+            5: 1,
+            7: 5,
+            8: 4,
+            9: 997,
+            10: 997,
+            11: 2,
+        },
+    }
 
-    elif landcover_name == LandcoverType.GLC.value:
-        # Transform to landcover_dbf scale (GLOBAL COPERNICUS LAND COVER)
-        landcover_reclass = xr.where(
-            landcover == 0, 997, landcover
-        )  # No input data available -> NA
-        landcover_reclass = xr.where(
-            landcover_reclass == 20, 2, landcover_reclass
-        )  # Shrubs -> Grassland
-        landcover_reclass = xr.where(
-            landcover_reclass == 30, 2, landcover_reclass
-        )  # Herbaceous vegetation -> Grassland
-        landcover_reclass = xr.where(
-            landcover_reclass == 40, 1, landcover_reclass
-        )  # Cultivated and managed vegetation/agriculture (cropland) -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 50, 5, landcover_reclass
-        )  # Urban / built-up -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 60, 4, landcover_reclass
-        )  # Bare / sparse vegetation -> Bare
-        landcover_reclass = xr.where(
-            landcover_reclass == 70, 997, landcover_reclass
-        )  # Snow and ice -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 80, 6, landcover_reclass
-        )  # Permanent water bodies -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 90, 6, landcover_reclass
-        )  # Herbaceous wetland -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 100, 2, landcover_reclass
-        )  # Moss and lichen -> Grassland
-        landcover_reclass = xr.where(
-            landcover_reclass == 111, 3, landcover_reclass
-        )  # Closed forest, evergreen needle leaf -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 112, 3, landcover_reclass
-        )  # Closed forest, evergreen broad leaf -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 113, 3, landcover_reclass
-        )  # Closed forest, deciduous needle leaf -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 114, 3, landcover_reclass
-        )  # Closed forest, deciduous broad leaf -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 115, 3, landcover_reclass
-        )  # Closed forest, mixed -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 116, 3, landcover_reclass
-        )  # Closed forest, unknown -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 121, 3, landcover_reclass
-        )  # Open forest, evergreen needle leaf -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 122, 3, landcover_reclass
-        )  # Open forest, evergreen broad leaf -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 123, 3, landcover_reclass
-        )  # Open forest, deciduous needle leaf -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 124, 3, landcover_reclass
-        )  # Open forest, deciduous broad leaf -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 125, 3, landcover_reclass
-        )  # Open forest, mixed -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 126, 3, landcover_reclass
-        )  # Open forest, unknown -> Forest
+    # Get the reclassification mapping for the given landcover_name
+    rules = reclassification_rules.get(landcover_name)
 
-    elif landcover_name == LandcoverType.ELC.value:
-        # Transform to landcover_dbf scale (ESRI LAND COVER)
-        landcover_reclass = xr.where(
-            landcover == 1, 6, landcover
-        )  # Water -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 2, 3, landcover_reclass
-        )  # Trees -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 4, 997, landcover_reclass
-        )  # Flooded vegetation -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 5, 1, landcover_reclass
-        )  # Crops -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 7, 5, landcover_reclass
-        )  # Built Area -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 8, 4, landcover_reclass
-        )  # Bare ground -> Bare
-        landcover_reclass = xr.where(
-            landcover_reclass == 9, 997, landcover_reclass
-        )  # Snow/Ice -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 10, 997, landcover_reclass
-        )  # Clouds -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 11, 2, landcover_reclass
-        )  # Rangeland -> Grassland
+    # Apply reclassification using the rules
+    landcover_reclass = xr.apply_ufunc(
+        lambda x: rules.get(x, x),
+        landcover,
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=[landcover.dtype],
+    )
 
     return landcover_reclass
 
 
 def reclass_landcover_elsus(landcover, proj_crs, landcover_name):
     """
-    This function returns the landcover reclassified from Corine Land Cover to the landcover
-    classes for ELSUS.
+    Reclassify landcover data for ELSUS analysis based on the specified landcover type.
+
     Args:
-        landcover: landcover xarray
-        proj_crs: CRS
-        landcover_name: Landcover name (ESA WC or CLC)
+        landcover: xarray.DataArray containing landcover data
+        proj_crs: CRS for the dataset
+        landcover_name: Landcover type (ESAWC, CLC, GLC, ELC)
+
     Returns:
-        landcover xarray reclassified
+        Reclassified landcover xarray.DataArray
     """
-    if landcover_name == LandcoverType.ESAWC.value:
-        # Reclassification of LULC for ESA WorldCover
-        landcover_reclass = xr.where(
-            landcover == 10, 3, landcover
-        )  # Tree cover -> Closed Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 20, 4, landcover_reclass
-        )  # Shrubland -> Shrub
-        landcover_reclass = xr.where(
-            landcover_reclass == 30, 5, landcover_reclass
-        )  # Grassland -> Pasture/Meadow
-        landcover_reclass = xr.where(
-            landcover_reclass == 40, 1, landcover_reclass
-        )  # Arable land -> Cropland
-        landcover_reclass = xr.where(
-            landcover_reclass == 50, 7, landcover_reclass
-        )  # Built-up -> Artificial
-        landcover_reclass = xr.where(
-            landcover_reclass == 60, 6, landcover_reclass
-        )  # Bare/Sparse vegetation -> Bare
-        landcover_reclass = xr.where(
-            landcover_reclass == 70, 997, landcover_reclass
-        )  # Snow and ice -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 80, 997, landcover_reclass
-        )  # Permanent water bodies -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 90, 997, landcover_reclass
-        )  # Herbaceous wetland -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 95, 997, landcover_reclass
-        )  # Mangroves -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 100, 5, landcover_reclass
-        )  # Moss and lichen -> Pasture/Meadow
+    # Define reclassification rules as dictionaries
+    reclassification_rules = {
+        LandcoverType.ESAWC.value: {
+            10: 3,
+            20: 4,
+            30: 5,
+            40: 1,
+            50: 7,
+            60: 6,
+            70: 997,
+            80: 997,
+            90: 997,
+            95: 997,
+            100: 5,
+        },
+        LandcoverType.CLC.value: {
+            **{k: 5 for k in [111, 112, 121, 122, 123, 124, 131, 132, 133, 141, 142]},
+            **{k: 1 for k in [211, 212, 213, 221, 222, 223, 241, 242, 243]},
+            231: 2,
+            244: 3,
+            **{k: 3 for k in [311, 312, 313, 324]},
+            **{k: 2 for k in [321, 322, 323]},
+            **{k: 4 for k in [331, 332, 333, 334]},
+            **{k: 997 for k in [335, 411, 412, 421, 422, 423]},
+            **{k: 6 for k in [511, 512, 521, 522, 523]},
+            999: 997,
+        },
+        LandcoverType.GLC.value: {
+            0: 997,
+            20: 4,
+            30: 5,
+            40: 1,
+            50: 7,
+            60: 6,
+            70: 997,
+            80: 997,
+            90: 997,
+            100: 5,
+            **{k: 3 for k in range(111, 117)},
+            **{k: 2 for k in range(121, 127)},
+        },
+        LandcoverType.ELC.value: {
+            1: 997,
+            2: 3,
+            4: 997,
+            5: 1,
+            7: 7,
+            8: 6,
+            9: 997,
+            10: 997,
+            11: 5,
+        },
+    }
 
-    elif landcover_name == LandcoverType.CLC.value:
-        # Transform to landcover_dbf scale (CORINE LAND COVER)
-        landcover_reclass = xr.where(
-            landcover == 111, 5, landcover
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 112, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 121, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 122, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 123, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 124, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 131, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 132, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 133, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 141, 5, landcover_reclass
-        )  # Artificial -> Urban areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 142, 5, landcover_reclass
-        )  # Artificial -> Urban areas
+    # Select the appropriate rules for the landcover type
+    rules = reclassification_rules.get(landcover_name)
 
-        landcover_reclass = xr.where(
-            landcover_reclass == 211, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 212, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 213, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 221, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 222, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 223, 1, landcover_reclass
-        )  # Cropland -> Arable Land
+    # Apply reclassification using the rules
+    landcover_reclass = xr.apply_ufunc(
+        lambda x: rules.get(x, x),
+        landcover,
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=[landcover.dtype],
+    )
 
-        landcover_reclass = xr.where(
-            landcover_reclass == 231, 2, landcover_reclass
-        )  # Pasture/Meadow -> Grassland
-        landcover_reclass = xr.where(
-            landcover_reclass == 241, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 242, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 243, 1, landcover_reclass
-        )  # Cropland -> Arable Land
-        landcover_reclass = xr.where(
-            landcover_reclass == 244, 3, landcover_reclass
-        )  # Open Forest -> Forest
-
-        landcover_reclass = xr.where(
-            landcover_reclass == 311, 3, landcover_reclass
-        )  # Closed Forest -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 312, 3, landcover_reclass
-        )  # Closed Forest -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 313, 3, landcover_reclass
-        )  # Closed Forest -> Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 321, 2, landcover_reclass
-        )  # Pasture/Meadow -> Grassland
-        landcover_reclass = xr.where(
-            landcover_reclass == 322, 2, landcover_reclass
-        )  # Shrub -> Grassland
-        landcover_reclass = xr.where(
-            landcover_reclass == 323, 2, landcover_reclass
-        )  # Shrub -> Grassland
-        landcover_reclass = xr.where(
-            landcover_reclass == 324, 3, landcover_reclass
-        )  # Open Forest -> Forest
-
-        landcover_reclass = xr.where(
-            landcover_reclass == 331, 4, landcover_reclass
-        )  # Bare -> Bare
-        landcover_reclass = xr.where(
-            landcover_reclass == 332, 4, landcover_reclass
-        )  # Bare -> Bare
-        landcover_reclass = xr.where(
-            landcover_reclass == 333, 4, landcover_reclass
-        )  # Bare -> Bare
-        landcover_reclass = xr.where(
-            landcover_reclass == 334, 4, landcover_reclass
-        )  # Bare -> Bare
-
-        landcover_reclass = xr.where(
-            landcover_reclass == 335, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 411, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 412, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 421, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 422, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 423, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
-
-        landcover_reclass = xr.where(
-            landcover_reclass == 511, 6, landcover_reclass
-        )  # Not applicable -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 512, 6, landcover_reclass
-        )  # Not applicable -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 521, 6, landcover_reclass
-        )  # Not applicable -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 522, 6, landcover_reclass
-        )  # Not applicable -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 523, 6, landcover_reclass
-        )  # Not applicable -> Water areas
-        landcover_reclass = xr.where(
-            landcover_reclass == 999, 997, landcover_reclass
-        )  # Not applicable -> Not applicable
-
-    elif landcover_name == LandcoverType.GLC.value:
-        # Transform to landcover_dbf scale (GLOBAL COPERNICUS LAND COVER)
-        landcover_reclass = xr.where(
-            landcover == 0, 997, landcover
-        )  # No input data available -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 20, 4, landcover_reclass
-        )  # Shrubs -> Shrub
-        landcover_reclass = xr.where(
-            landcover_reclass == 30, 5, landcover_reclass
-        )  # Herbaceous vegetation -> Pasture/Meadow
-        landcover_reclass = xr.where(
-            landcover_reclass == 40, 1, landcover_reclass
-        )  # Cultivated and managed vegetation/agriculture (cropland) -> Cropland
-        landcover_reclass = xr.where(
-            landcover_reclass == 50, 7, landcover_reclass
-        )  # Urban / built-up -> Artificial
-        landcover_reclass = xr.where(
-            landcover_reclass == 60, 6, landcover_reclass
-        )  # Bare / sparse vegetation -> Bare
-        landcover_reclass = xr.where(
-            landcover_reclass == 70, 997, landcover_reclass
-        )  # Snow and ice -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 80, 997, landcover_reclass
-        )  # Permanent water bodies -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 90, 997, landcover_reclass
-        )  # Herbaceous wetland -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 100, 5, landcover_reclass
-        )  # Moss and lichen -> Pasture/Meadow
-        landcover_reclass = xr.where(
-            landcover_reclass == 111, 3, landcover_reclass
-        )  # Closed forest, evergreen needle leaf -> Closed Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 112, 3, landcover_reclass
-        )  # Closed forest, evergreen broad leaf -> Closed Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 113, 3, landcover_reclass
-        )  # Closed forest, deciduous needle leaf -> Closed Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 114, 3, landcover_reclass
-        )  # Closed forest, deciduous broad leaf -> Closed Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 115, 3, landcover_reclass
-        )  # Closed forest, mixed -> Closed Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 116, 3, landcover_reclass
-        )  # Closed forest, unknown -> Closed Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 121, 2, landcover_reclass
-        )  # Open forest, evergreen needle leaf -> Open Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 122, 2, landcover_reclass
-        )  # Open forest, evergreen broad leaf -> Open Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 123, 2, landcover_reclass
-        )  # Open forest, deciduous needle leaf -> Open Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 124, 2, landcover_reclass
-        )  # Open forest, deciduous broad leaf -> Open Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 125, 2, landcover_reclass
-        )  # Open forest, mixed -> Open Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 126, 2, landcover_reclass
-        )  # Open forest, unknown -> Open Forest
-
-    elif landcover_name == LandcoverType.ELC.value:
-        # Transform to landcover_dbf scale (ESRI LAND COVER)
-        landcover_reclass = xr.where(
-            landcover == 1, 997, landcover
-        )  # Water -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 2, 3, landcover_reclass
-        )  # Trees -> Closed Forest
-        landcover_reclass = xr.where(
-            landcover_reclass == 4, 997, landcover_reclass
-        )  # Flooded vegetation -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 5, 1, landcover_reclass
-        )  # Crops -> Cropland
-        landcover_reclass = xr.where(
-            landcover_reclass == 7, 7, landcover_reclass
-        )  # Built Area -> Artificial
-        landcover_reclass = xr.where(
-            landcover_reclass == 8, 6, landcover_reclass
-        )  # Bare ground -> Bare
-        landcover_reclass = xr.where(
-            landcover_reclass == 9, 997, landcover_reclass
-        )  # Snow/Ice -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 10, 997, landcover_reclass
-        )  # Clouds -> Not applicable
-        landcover_reclass = xr.where(
-            landcover_reclass == 11, 5, landcover_reclass
-        )  # Rangeland -> Pasture/Meadow
-
+    # Write CRS to the reclassified data
     landcover_reclass = landcover_reclass.rio.write_crs(proj_crs, inplace=True)
     return landcover_reclass

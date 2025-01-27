@@ -608,7 +608,7 @@ def lsi_core(input_dict: dict) -> None:
         lulc = rasters.read(lulc_path, window=aoi_b, as_type=np.float32)
         lulc = rasters.crop(lulc.copy(), aoi_b)
         lulc = rasters.collocate(dem_b, lulc.astype(np.float32), Resampling.nearest)
-        lulc = rasters.crop(lulc, aoi_b)
+        lulc = rasters.crop(lulc.copy(), aoi_b)
 
         # Compute landcover layer
         landuse_layer = landcover_raster(

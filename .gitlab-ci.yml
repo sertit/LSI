@@ -16,7 +16,7 @@ deploy:
     PROJECT_ROOT: "lsi"
     CENTRAL_REPOSITORY: sertit/arcgis-pro/sertit_atools
   stage: deploy
-  trigger: $CENTRAL_REPOSITORY
+  trigger: sertit/arcgis-pro/sertit_atools
   rules:
     # Deploy if tag
     - if: $CI_COMMIT_TAG
@@ -32,4 +32,10 @@ deploy_registry:
     - pip install build twine
     - python -m build
     - TWINE_PASSWORD=${CI_JOB_TOKEN} TWINE_USERNAME=gitlab-ci-token python -m twine upload --repository-url ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/pypi dist/*
-
+  rules:
+    # Deploy if tag
+    - if: $CI_COMMIT_TAG
+      when: on_success
+    # Manual deploy if commit to the default branch
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      when: manual

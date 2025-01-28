@@ -10,3 +10,6 @@
 
 ## 1.3.0 (2025-01-17)
 - CI added
+
+## 1.3.1 (2025-01-27)
+- Change in reclass_landcover and reclass_landcover_elsus from continous xr.where to dict comprehension for better readeability.

@@ -242,6 +242,7 @@ def main_arcgis(parameters, messages):
         feature_layer_to_path,
         init_conda_arcpy_env,
     )
+    from sertit.unistra import unistra_s3
 
     init_conda_arcpy_env()
 
@@ -250,12 +251,6 @@ def main_arcgis(parameters, messages):
 
     arcpy_logger = ArcPyLogger("LSI")
     logger = logging.getLogger(LOGGER_NAME)
-    # handler = ArcPyLogHandler(
-    #     "output_log.log", maxBytes=1024 * 1024 * 2, backupCount=10  # 2MB log files
-    # )
-    # formatter = logging.Formatter("%(levelname)-8s %(message)s")
-    # handler.setFormatter(formatter)
-    # logger.addHandler(handler)
     logger = arcpy_logger.logger
     logger.setLevel(logging.DEBUG)
 
@@ -293,15 +288,13 @@ def main_arcgis(parameters, messages):
         InputParameters.TEMP.value: temp,
         InputParameters.JENKS.value: jenks,
     }
-    DataPath.load_paths()
-    try:
-        lsi_core(input_dict)
-        logger.info("lsi is a success.")
+    with unistra_s3():
+        DataPath.load_paths()
+        try:
+            lsi_core(input_dict)
+            logger.info("lsi is a success.")
 
-    except Exception:
-        import traceback
+        except Exception:
+            import traceback
 
-        logger.error("lsi has failed: %s", traceback.format_exc())
-
-    # finally:
-    #     logger.removeHandler(handler)
+            logger.error("lsi has failed: %s", traceback.format_exc())

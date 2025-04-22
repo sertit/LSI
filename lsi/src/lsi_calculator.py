@@ -13,6 +13,7 @@ import numpy as np
 import rasterio as rio
 import whitebox_workflows as wbw
 import xarray as xr
+from pysheds.grid import Grid
 from rasterio.enums import Resampling
 from scipy.ndimage import distance_transform_edt
 from sertit import AnyPath, geometry, rasters, vectors
@@ -267,7 +268,7 @@ def elevation_raster(dem_b, aoi, output_path):
 
 
 def hydro_raster_wbw(
-    dem_buff, aoi, proj_crs, dem_max, dem_min, output_resolution, tmp_dir
+    dem_buff, aoi, proj_crs, dem_max, dem_min, output_resolution, tmp_dir, ftep
 ):
     """
     Make raster of hydro_weights
@@ -299,10 +300,11 @@ def hydro_raster_wbw(
             )
             dem_b = rasters.crop(dem_b, aoi_b)
 
+        dem_b_path = os.path.join(tmp_dir, "dem_d.tif")
         # Write DEM in memory for Whitebox to work
         rasters.write(
             dem_b,
-            os.path.join(tmp_dir, "dem_d.tif"),
+            dem_b_path,
             compress="deflate",
             predictor=1,
             nodata=FLOAT_NODATA,
@@ -311,16 +313,43 @@ def hydro_raster_wbw(
         # -- Hydro processing
         wbe = wbw.WbEnvironment()
 
-        LOGGER.info("-- -- Preparing the DEM: Filling Pits")
-        # -- Fill pits
-        filled_pits = wbe.fill_pits(wbe.read_raster(os.path.join(tmp_dir, "dem_d.tif")))
+        # When computing in the FTEP we use pysheds for fill_depressions to avoid panicking issue
+        # identified here: gitlab.unistra.fr/sertit/arcgis-pro/lsi/-/issues/2
+        if ftep: 
+            LOGGER.info("-- -- Preparing the DEM: Filling Pits")
+            # -- Compute D8 flow directions
+            grid = Grid.from_raster(dem_b_path)
+            dem = grid.read_raster(dem_b_path)
 
-        LOGGER.info("-- -- Preparing the DEM: Filling Depressions")
-        # Write and read using WbW
-        wbe.write_raster(filled_pits, os.path.join(tmp_dir, "filled_pits.tif"))
-        wbe.read_raster(os.path.join(tmp_dir, "filled_pits.tif"))
-        # -- Fill depressions
-        filled_depressions = wbe.fill_depressions(filled_pits)
+            # Fill pits in DEM
+            pit_filled_dem = grid.fill_pits(dem)
+
+            LOGGER.info("-- -- Preparing the DEM: Filling Depressions")
+            # Fill depressions in DEM
+            flooded_dem = grid.fill_depressions(pit_filled_dem)
+            ps_flooded_dem_path = os.path.join(tmp_dir, "flooded_dem.tif")
+
+            grid.to_raster(
+                flooded_dem,
+                ps_flooded_dem_path,
+                blockxsize=16,
+                blockysize=16,
+                dtype=np.float32,
+            )
+
+            filled_depressions = wbe.read_raster(ps_flooded_dem_path)
+
+        else:
+            LOGGER.info("-- -- Preparing the DEM: Filling Pits")
+            # -- Fill pits
+            filled_pits = wbe.fill_pits(wbe.read_raster(os.path.join(tmp_dir, "dem_d.tif")))
+
+            LOGGER.info("-- -- Preparing the DEM: Filling Depressions")
+            # Write and read using WbW
+            wbe.write_raster(filled_pits, os.path.join(tmp_dir, "filled_pits.tif"))
+            wbe.read_raster(os.path.join(tmp_dir, "filled_pits.tif"))
+            # -- Fill depressions
+            filled_depressions = wbe.fill_depressions(filled_pits)
 
         # -- Flow accumulation
         LOGGER.info("-- -- Compute Flow Accumulation")
@@ -344,7 +373,7 @@ def hydro_raster_wbw(
             os.path.join(tmp_dir, "flow_acc_thresh.tif"),
             compress="deflate",
             predictor=1,
-            dtype=np.float32,
+            dtype=np.int16,
         )
 
         flow_acc_thresh = wbe.read_raster(os.path.join(tmp_dir, "flow_acc_thresh.tif"))
@@ -365,9 +394,11 @@ def hydro_raster_wbw(
         flowacc_thresh_lines = flowacc_thresh_lines.set_crs(proj_crs)
         flowacc_thresh_lines = flowacc_thresh_lines.to_crs(aoi.crs)
 
+        # No value_field defined as it is already in binary
         flowacc_thresh_lines = rasters.rasterize(
-            dem_b, flowacc_thresh_lines, value_field="VALUE"
-        )
+            dem_b, flowacc_thresh_lines,
+        )       
+
         rasters.write(
             flowacc_thresh_lines,
             os.path.join(tmp_dir, "flowacc_thresh_lines.tif"),

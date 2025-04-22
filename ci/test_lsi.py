@@ -18,10 +18,6 @@ from lsi.lsi_core import DataPath, InputParameters, lsi_core
 
 ci.reduce_verbosity()
 
-os.environ["USE_S3_STORAGE"] = "1"
-os.environ["AWS_S3_ENDPOINT"] = "s3.unistra.fr"
-
-
 def get_ci_path() -> AnyPathType:
     """
     Get the path to the CI folder.

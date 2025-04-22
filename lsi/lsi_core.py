@@ -203,7 +203,7 @@ def check_parameters(input_dict: dir) -> None:
 
 
 # --- LSI computation
-def lsi_core(input_dict: dict) -> None:
+def lsi_core(input_dict: dict, ftep) -> None:
     """
     Make a dict with the rasters:
         1. Geology
@@ -634,6 +634,7 @@ def lsi_core(input_dict: dict) -> None:
             dem_min,
             output_resolution,
             tmp_dir,
+            ftep,
         )
 
         # -- 6. Aspect

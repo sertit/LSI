@@ -68,7 +68,7 @@ def test_lsi_global():
             InputParameters.OUTPUT_DIR.value: str(output),
         }
         DataPath.load_paths()
-        lsi_core(input_dict=input_dict)
+        lsi_core(input_dict=input_dict, ftep=False)
 
         output_classification_tif = os.path.join(output, "LandslideSusceptibility.tif")
         output_classification_shp = os.path.join(output, "FER_LR_ave.shp")
@@ -104,7 +104,7 @@ def test_lsi_europe():
             InputParameters.OUTPUT_DIR.value: str(output),
         }
         DataPath.load_paths()
-        lsi_core(input_dict=input_dict)
+        lsi_core(input_dict=input_dict, ftep=False)
 
         output_classification_tif = os.path.join(output, "LandslideSusceptibility.tif")
         output_classification_shp = os.path.join(output, "FER_LR_ave.shp")

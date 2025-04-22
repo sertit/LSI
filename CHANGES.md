@@ -13,3 +13,8 @@
 
 ## 1.3.1 (2025-01-27)
 - Change in reclass_landcover and reclass_landcover_elsus from continous xr.where to dict comprehension for better readeability.
+
+
+## 1.3.3 (2025-04-22)
+- Add ftep option for hydro layer computation at GLOBAL method. This method uses pysheds for filling depressions to avoid panicking error at the FTEP.
+- Delete the value_field input at the flow accumulation polyline rasterization to keep it binary

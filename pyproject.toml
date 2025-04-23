@@ -25,6 +25,7 @@ version = "1.3.5"
 
 dependencies = [
     # Libs for all platforms
+    "pysheds",
     "whitebox-workflows",
     "jenkspy",
 ]

@@ -7,6 +7,7 @@ You should have received a copy of the GNU General Public License along with LSI
 
 """Tests"""
 
+import logging
 import os
 import tempfile
 
@@ -17,11 +18,14 @@ from sertit.unistra import s3_env
 
 from lsi.lsi_core import DataPath, InputParameters, lsi_core
 
+numba_logger = logging.getLogger('numba')
+numba_logger.setLevel(logging.WARNING)
+
 ci.reduce_verbosity()
 
 # @pytest.fixture(scope="session", autouse=True)
 # def set_env():
-os.environ["NUMBA_DEBUG"] = "0"
+# os.environ["NUMBA_DEBUG"] = "0"
 
 def get_ci_path() -> AnyPathType:
     """

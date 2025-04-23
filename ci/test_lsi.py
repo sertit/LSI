@@ -9,20 +9,16 @@ You should have received a copy of the GNU General Public License along with LSI
 
 import os
 import tempfile
-import warnings
-
-from numba.core.errors import NumbaWarning
 
 # import pytest
 from sertit import AnyPath, ci  # noqa
 from sertit.types import AnyPathType
 from sertit.unistra import s3_env
 
+from ci.scripts_utils import reduce_verbosity
 from lsi.lsi_core import DataPath, InputParameters, lsi_core
 
-warnings.simplefilter('ignore', category=NumbaWarning)
-
-ci.reduce_verbosity()
+reduce_verbosity()
 
 # @pytest.fixture(scope="session", autouse=True)
 # def set_env():

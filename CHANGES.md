@@ -22,3 +22,7 @@
 ## 1.3.4 (2025-04-23)
 - Fix numba debugging in CI.
 - Fix typing error in dependencies for whitebox workflows.
+
+## 1.3.5 (2025-04-23)
+- Fix typo
+- Fix pyproject

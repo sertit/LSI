@@ -51,7 +51,7 @@ ignore = ["E501", "E402"]
 keep-runtime-typing = true
 
 [project.scripts]
-lsi = "rusle.lsi_cli:compute_lsi"
+lsi = "lsi.lsi_cli:compute_lsi"
 lsi_ftep = "lsi.lsi_ftep:compute_lsi"
 
 # Pytest options

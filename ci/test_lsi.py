@@ -10,6 +10,7 @@ You should have received a copy of the GNU General Public License along with LSI
 import os
 import tempfile
 
+import pytest
 from sertit import AnyPath, ci  # noqa
 from sertit.types import AnyPathType
 from sertit.unistra import s3_env
@@ -17,6 +18,10 @@ from sertit.unistra import s3_env
 from lsi.lsi_core import DataPath, InputParameters, lsi_core
 
 ci.reduce_verbosity()
+
+@pytest.fixture(scope="session", autouse=True)
+def set_env():
+    os.environ["NUMBA_DEBUG"] = "0"
 
 def get_ci_path() -> AnyPathType:
     """

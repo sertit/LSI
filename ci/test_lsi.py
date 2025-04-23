@@ -7,6 +7,7 @@ You should have received a copy of the GNU General Public License along with LSI
 
 """Tests"""
 
+import logging
 import os
 import tempfile
 
@@ -15,10 +16,11 @@ from sertit import AnyPath, ci  # noqa
 from sertit.types import AnyPathType
 from sertit.unistra import s3_env
 
-from ci.scripts_utils import reduce_verbosity
 from lsi.lsi_core import DataPath, InputParameters, lsi_core
 
-reduce_verbosity()
+logging.getLogger("sertit").setLevel(logging.INFO)
+ci.reduce_verbosity()
+
 
 # @pytest.fixture(scope="session", autouse=True)
 # def set_env():

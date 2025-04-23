@@ -18,3 +18,7 @@
 ## 1.3.3 (2025-04-22)
 - Add ftep option for hydro layer computation at GLOBAL method. This method uses pysheds for filling depressions to avoid panicking error at the FTEP.
 - Delete the value_field input at the flow accumulation polyline rasterization to keep it binary
+
+## 1.3.3 (2025-04-22)
+- Fix numba debugging in CI.
+- Fix typing error in dependencies for whitebox workflows.

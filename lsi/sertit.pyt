@@ -291,7 +291,7 @@ def main_arcgis(parameters, messages):
     with unistra_s3():
         DataPath.load_paths()
         try:
-            lsi_core(input_dict)
+            lsi_core(input_dict, ftep=False)
             logger.info("lsi is a success.")
 
         except Exception:

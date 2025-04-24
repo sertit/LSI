@@ -100,7 +100,7 @@ def test_lsi_europe():
             InputParameters.AOI_PATH.value: str(aoi_path),
             InputParameters.LOCATION.value: "Europe",
             InputParameters.DEM_NAME.value: "COPDEM 30m",
-            InputParameters.LANDCOVER_NAME.value: "Global Land Cover - Copernicus 2019 (100m)",
+            InputParameters.LANDCOVER_NAME.value: "Corine Land Cover - 2018 (100m)",
             InputParameters.EUROPE_METHOD.value: "Refined",  # Not relevant for this test
             InputParameters.OUTPUT_RESOLUTION.value: 50,
             InputParameters.TEMP.value: False,  # Don't keep temporary files

@@ -107,9 +107,6 @@ class DataPath:
             / "climate_phys_regions.shp"
         )
         cls.GADM_PATH = cls.GLOBAL_DIR / "GADM" / "gadm_410.gdb"
-        cls.COASTLINE_PATH = (
-            cls.GLOBAL_DIR / "GAUL_2006_coast" / "gaul2006_coast_fixed.shp"
-        )
 
 
 @unique
@@ -240,8 +237,6 @@ def lsi_core(input_dict: dict, ftep) -> None:
     LOGGER.info("-- Reading inputs")
     # Read GADM path for statistics
     gadm_path = str(DataPath.GADM_PATH)
-    # Read Coastline path for cropping AOIs that include water (GLOBAL case)
-    coastline_path = str(DataPath.COASTLINE_PATH)
 
     # Define folder for temporal files
     tmp_dir = os.path.join(output_path, "temp_dir")
@@ -263,14 +258,6 @@ def lsi_core(input_dict: dict, ftep) -> None:
     else:
         aoi = vectors.read(aoi_path)
 
-    # Removing the open water (or most of it at least) from the AOI by clip with coastline
-    # (!) Only for GLOBAL method as the European method takes into consideration Coastlines
-    # that could be erased for some AOIs where there is a coarser coastline delineation
-    # from the layer used (GAUL 2006)
-    if location == LocationType.GLOBAL.value:
-        coastline = vectors.read(coastline_path, window=aoi)  # read with AOI window
-        aoi = gpd.clip(aoi, coastline)
-
     # -- Define EPSG
     if epsg_code:
         proj_crs = str("EPSG:" + str(epsg_code))
@@ -291,6 +278,16 @@ def lsi_core(input_dict: dict, ftep) -> None:
     # - Write original AOI to file
     aoi_o_path = os.path.join(tmp_dir, "aoi.shp")
     aoi.to_file(aoi_o_path)
+
+    # Preparing statistics gadm_AOI
+    # Read GADM layer and overlay with AOI
+    aoi_gadm = aoi.copy()
+    aoi_gadm.geometry = aoi_gadm.geometry.buffer(GADM_BUFFER)
+    with warnings.catch_warnings():  # For cases of polygons with more than 100 parts
+        warnings.simplefilter("ignore")
+        gadm = vectors.read(gadm_path, window=aoi_gadm)
+    gadm = gadm.to_crs(proj_crs)
+    gadm = gpd.clip(gadm, aoi)
 
     #  Dict that store dem name and dem path
     dem_path_dict = {
@@ -697,6 +694,7 @@ def lsi_core(input_dict: dict, ftep) -> None:
 
     LOGGER.info("-- Writing LandslideSusceptibility.tif in memory")
     # Write in memory LSI with unclassified values
+    lsi_tif = rasters.crop(lsi_tif, gadm)
     rasters.write(lsi_tif, os.path.join(output_path, "LandslideSusceptibility.tif"))
 
     if (
@@ -732,15 +730,7 @@ def lsi_core(input_dict: dict, ftep) -> None:
 
     LOGGER.info("-- Computing LSI statistics (FER_LR_av)")
 
-    # Read GADM layer and overlay with AOI
-    aoi_gadm = aoi_b
-    aoi_gadm.geometry = aoi_gadm.geometry.buffer(GADM_BUFFER)
-    with warnings.catch_warnings():  # For cases of polygons with more than 100 parts
-        warnings.simplefilter("ignore")
-        gadm = vectors.read(gadm_path, window=aoi_gadm)
-    gadm = gadm.to_crs(proj_crs)
-    gadm = gpd.clip(gadm, aoi)
-
+    # Zonal statistics over LandslideSusceptibility based on GADM
     lsi_stats = compute_statistics(
         gadm, os.path.join(output_path, "LandslideSusceptibility.tif"), location
     )
@@ -755,4 +745,3 @@ def lsi_core(input_dict: dict, ftep) -> None:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
     return
-    # raise NotImplementedError

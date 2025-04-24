@@ -26,3 +26,9 @@
 ## 1.3.5 (2025-04-23)
 - Fix typo
 - Fix pyproject
+
+## 1.3.6 (2025-04-23)
+- Fix typo
+
+## 1.3.7 (2025-04-24)
+- Add the needed ftep as input for lsi_core in lsi_ftep.py

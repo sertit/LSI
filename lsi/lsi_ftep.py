@@ -66,7 +66,7 @@ def compute_lsi():
 
     try:
         # Compute LSI charter
-        lsi_core(input_dict)
+        lsi_core(input_dict, ftep=True)
         LOGGER.info("--- LSI was a success.")
         sys.exit(0)
 

@@ -192,12 +192,12 @@ def check_parameters(input_dict: dir) -> None:
 
     # Check if other_dem_path is needed
     if (dem_name == DemType.OTHER.value) and (other_dem_path is None):
-        raise ValueError(f'{"Dem path is needed !"}')
+        raise ValueError(f"{'Dem path is needed !'}")
     if (location == LocationType.GLOBAL.value) and (
         landcover_name is LandcoverType.CLC.value
     ):
         raise ValueError(
-            f'{"Corine Land Cover can not be used for GLOBAL calculations, only in Europe !"}'
+            f"{'Corine Land Cover can not be used for GLOBAL calculations, only in Europe !'}"
         )
     return
 

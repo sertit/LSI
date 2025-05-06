@@ -1,12 +1,11 @@
 # Release History
 
-
-## 1.4.0 (2025-04-24)
-- Delete clip of AOI by coastline, instead clip by GADM layer which is better aligned with coasts.
+## 1.4.0 (2025-05-06)
+- ENH: Add ftep=False as input to arcgispro toolbox
+- ENH: Delete clip of AOI by coastline, instead clip by GADM layer which is better aligned with coasts.
+- ENH: Add exception control for error in reading rasters with rasterio and vectors with pyogrio at the FTEP, assumed to be related with problems of timeouts, failed reads, networking issues, rate limits, etc.
 - CI: Change GLC to CLC for european test.
-
-## 1.3.8 (2025-04-24)
-- Add ftep=False as input to arcgispro toolbox
+- DOC: Modify in CHANGES.md organization.
 
 ## 1.3.7 (2025-04-24)
 - Add the needed ftep as input for lsi_core in lsi_ftep.py

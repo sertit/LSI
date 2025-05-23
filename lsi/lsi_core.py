@@ -742,17 +742,17 @@ def lsi_core(input_dict: dict, ftep) -> None:
         )
 
     except RasterioIOError as e:
-        print("Could not open or read the raster. Check if your data is available at your path or try relaunching RUSLE now or later")
+        LOGGER.error("Could not open or read the raster. Check if your data is available at your path or try relaunching RUSLE now or later")
         print(str(e))
         sys.exit(1)
 
     except DataSourceError as e:
-        print("Could not open or read the vector file. Check if your data is available at your path or try relaunching RUSLE now or later")
+        LOGGER.error("Could not open or read the vector file. Check if your data is available at your path or try relaunching RUSLE now or later")
         print(str(e))
         sys.exit(1)
 
     except Exception as e:
-        print("Unexpected error:", type(e).__name__)
+        LOGGER.error("Unexpected error: " + str(type(e).__name__), exc_info=True)
         traceback.print_exc()  # Full traceback
         sys.exit(1)
 

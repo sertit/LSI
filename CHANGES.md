@@ -1,5 +1,8 @@
 # Release History
 
+## 1.4.1 (2025-05-23)
+- ENH: Change the print errors to LOGGER errors to catch and explain the FTEP S3 reading errors
+
 ## 1.4.0 (2025-05-06)
 - ENH: Add ftep=False as input to arcgispro toolbox
 - ENH: Delete clip of AOI by coastline, instead clip by GADM layer which is better aligned with coasts.

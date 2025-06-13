@@ -10,20 +10,10 @@ include:
 variables:
   DOCKER_TLS_CERTDIR: ""
 
-deploy:
+trigger_sertit_atools:
+  extends: .trigger_sertit_atools_update_tool
   variables:
-    PROJECT_PATH: $CI_PROJECT_PATH
     PROJECT_ROOT: "lsi"
-    CENTRAL_REPOSITORY: sertit/arcgis-pro/sertit_atools
-  stage: deploy
-  trigger: sertit/arcgis-pro/sertit_atools
-  rules:
-    # Deploy if tag
-    - if: $CI_COMMIT_TAG
-      when: on_success
-    # Manual deploy if commit to the default branch
-    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
-      when: manual
 
 deploy_registry:
   image: python:latest

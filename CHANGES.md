@@ -1,5 +1,8 @@
 # Release History
 
+## 1.4.2 (2025-MM-DD)
+- CI: Use new groupware CI template for triggering sertit_atools update
+
 ## 1.4.1 (2025-05-23)
 - ENH: Change the print errors to LOGGER errors to catch and explain the FTEP S3 reading errors
 

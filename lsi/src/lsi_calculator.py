@@ -315,7 +315,7 @@ def hydro_raster_wbw(
 
         # When computing in the FTEP we use pysheds for fill_depressions to avoid panicking issue
         # identified here: gitlab.unistra.fr/sertit/arcgis-pro/lsi/-/issues/2
-        if ftep: 
+        if ftep:
             LOGGER.info("-- -- Preparing the DEM: Filling Pits")
             # -- Compute D8 flow directions
             grid = Grid.from_raster(dem_b_path)
@@ -342,7 +342,9 @@ def hydro_raster_wbw(
         else:
             LOGGER.info("-- -- Preparing the DEM: Filling Pits")
             # -- Fill pits
-            filled_pits = wbe.fill_pits(wbe.read_raster(os.path.join(tmp_dir, "dem_d.tif")))
+            filled_pits = wbe.fill_pits(
+                wbe.read_raster(os.path.join(tmp_dir, "dem_d.tif"))
+            )
 
             LOGGER.info("-- -- Preparing the DEM: Filling Depressions")
             # Write and read using WbW
@@ -396,8 +398,9 @@ def hydro_raster_wbw(
 
         # No value_field defined as it is already in binary
         flowacc_thresh_lines = rasters.rasterize(
-            dem_b, flowacc_thresh_lines,
-        )       
+            dem_b,
+            flowacc_thresh_lines,
+        )
 
         rasters.write(
             flowacc_thresh_lines,

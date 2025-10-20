@@ -1,4 +1,5 @@
 stages:
+  - bot
   - lint
   - test
   - deploy

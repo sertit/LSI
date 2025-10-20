@@ -2,6 +2,9 @@
 requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
+[tool.ruff]
+extend-include = ["*.pyt"]
+
 [tool.setuptools.packages.find]
 include = ["lsi*"]
 

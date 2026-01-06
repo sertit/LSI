@@ -193,12 +193,12 @@ def check_parameters(input_dict: dir) -> None:
 
     # Check if other_dem_path is needed
     if (dem_name == DemType.OTHER.value) and (other_dem_path is None):
-        raise ValueError(f'{"Dem path is needed !"}')
+        raise ValueError(f"{'Dem path is needed !'}")
     if (location == LocationType.GLOBAL.value) and (
         landcover_name is LandcoverType.CLC.value
     ):
         raise ValueError(
-            f'{"Corine Land Cover can not be used for GLOBAL calculations, only in Europe !"}'
+            f"{'Corine Land Cover can not be used for GLOBAL calculations, only in Europe !'}"
         )
     return
 
@@ -224,7 +224,7 @@ def lsi_core(input_dict: dict, ftep) -> None:
     LOGGER.info(f"*** Tool version: {__version__} ***")
     # --- Check parameters ---
     # Catch FTEP-S3 errors (S3 access instability most likely related to networking issues, timeouts, or rate limits)
-    try: 
+    try:
         check_parameters(input_dict)
 
         # --- Extract parameters ---
@@ -289,7 +289,9 @@ def lsi_core(input_dict: dict, ftep) -> None:
         # Read GADM layer and overlay with AOI
         aoi_gadm = aoi.copy()
         aoi_gadm.geometry = aoi_gadm.geometry.buffer(GADM_BUFFER)
-        with warnings.catch_warnings():  # For cases of polygons with more than 100 parts
+        with (
+            warnings.catch_warnings()
+        ):  # For cases of polygons with more than 100 parts
             warnings.simplefilter("ignore")
             gadm = vectors.read(gadm_path, window=aoi_gadm)
         gadm = gadm.to_crs(proj_crs)
@@ -393,7 +395,9 @@ def lsi_core(input_dict: dict, ftep) -> None:
                 lsi_tif = rasters.crop(elsus_path, aoi)
                 lsi_tif = lsi_tif.rio.write_crs(proj_crs)
                 lsi_tif = lsi_tif.rio.reproject(
-                    proj_crs, resolution=output_resolution, resampling=Resampling.bilinear
+                    proj_crs,
+                    resolution=output_resolution,
+                    resampling=Resampling.bilinear,
                 )
                 lsi_tif.rasters.crop(lsi_tif, aoi)
                 lsi_tif.name = "Value"
@@ -437,7 +441,9 @@ def lsi_core(input_dict: dict, ftep) -> None:
             physio_zones = physio_zones.to_crs(proj_crs)
             physio_zones_aoi = gpd.clip(physio_zones, aoi)
 
-            vectors.write(physio_zones_aoi, os.path.join(tmp_dir, "physio_zone_AOI.shp"))
+            vectors.write(
+                physio_zones_aoi, os.path.join(tmp_dir, "physio_zone_AOI.shp")
+            )
             # Define a mapping of Zones to the Zone_Weights database file
             zone_to_dbf = {
                 0: "Zone0",
@@ -503,7 +509,9 @@ def lsi_core(input_dict: dict, ftep) -> None:
                 else:  # the weights are set to 0 for Zone0
                     # A random file is chosen (in this case Zone1). which file i is, is not important because at the end
                     # the weights are set to 0 for Zone0
-                    landcover_w_path = str(elsus_weights_path / "Zone1/Landcover_Z1.dbf")
+                    landcover_w_path = str(
+                        elsus_weights_path / "Zone1/Landcover_Z1.dbf"
+                    )
 
                 # -- Compute the Rasters
                 landcover_dir = landcover_raster_eu(
@@ -523,7 +531,8 @@ def lsi_core(input_dict: dict, ftep) -> None:
                 # ---- SLOPE CASE ----
                 # -- Define weights path
                 slope_w_path = str(
-                    elsus_weights_path / str(str(db_file) + "/Slope_Z" + str(zone) + ".dbf")
+                    elsus_weights_path
+                    / str(str(db_file) + "/Slope_Z" + str(zone) + ".dbf")
                 )
                 # -- Compute the Rasters
                 slope_dir = slope_raster_eu(
@@ -561,7 +570,9 @@ def lsi_core(input_dict: dict, ftep) -> None:
                 warnings.simplefilter("ignore")
                 fw_dbf = gpd.read_file(global_final_weights_dbf_path)
                 geology_weights = fw_dbf[fw_dbf.Factors == "Geology"].Weights.iloc[0]
-                lsi_tif = slope_tif + geology_tif * float(geology_weights) + landcover_tif
+                lsi_tif = (
+                    slope_tif + geology_tif * float(geology_weights) + landcover_tif
+                )
                 # lsi_tif = slope_tif + lithology_tif + landcover_tif
 
         elif location == LocationType.GLOBAL.value:
@@ -602,7 +613,9 @@ def lsi_core(input_dict: dict, ftep) -> None:
             # Compute Geology layer
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                geology_layer = geology_raster(lithology_path, dem, aoi, proj_crs, tmp_dir)
+                geology_layer = geology_raster(
+                    lithology_path, dem, aoi, proj_crs, tmp_dir
+                )
 
             # -- 2. Slope
             slope_layer = slope_raster(dem_b, aoi, tmp_dir)
@@ -651,7 +664,9 @@ def lsi_core(input_dict: dict, ftep) -> None:
             geology_weights = fw_dbf[fw_dbf.Factors == "Geology"].Weights.iloc[0]
             aspect_weights = fw_dbf[fw_dbf.Factors == "Slope aspect"].Weights.iloc[0]
             elevation_weights = fw_dbf[fw_dbf.Factors == "Elevation"].Weights.iloc[0]
-            hydro_weights = fw_dbf[fw_dbf.Factors == "Distance from river"].Weights.iloc[0]
+            hydro_weights = fw_dbf[
+                fw_dbf.Factors == "Distance from river"
+            ].Weights.iloc[0]
             landuse_weights = fw_dbf[fw_dbf.Factors == "Land use"].Weights.iloc[0]
 
             # Final weight
@@ -660,7 +675,9 @@ def lsi_core(input_dict: dict, ftep) -> None:
             # Read all layers from temporal directory
             slope_layer = rasters.read(os.path.join(tmp_dir, "slope_weight.tif"))
             geology_layer = rasters.read(os.path.join(tmp_dir, "geology_weight.tif"))
-            elevation_layer = rasters.read(os.path.join(tmp_dir, "elevation_weight.tif"))
+            elevation_layer = rasters.read(
+                os.path.join(tmp_dir, "elevation_weight.tif")
+            )
             aspect_layer = rasters.read(os.path.join(tmp_dir, "aspect_weight.tif"))
             landuse_layer = rasters.read(os.path.join(tmp_dir, "landcover_weight.tif"))
             hydro_layer = rasters.read(os.path.join(tmp_dir, "hydro_weight.tif"))
@@ -670,12 +687,16 @@ def lsi_core(input_dict: dict, ftep) -> None:
             geology_layer = rasters.collocate(
                 slope_layer, geology_layer, Resampling.bilinear
             )
-            aspect_layer = rasters.collocate(slope_layer, aspect_layer, Resampling.bilinear)
+            aspect_layer = rasters.collocate(
+                slope_layer, aspect_layer, Resampling.bilinear
+            )
             aspect_layer = rasters.crop(aspect_layer, aoi)
             landuse_layer = rasters.collocate(
                 slope_layer, landuse_layer, Resampling.bilinear
             )
-            hydro_layer = rasters.collocate(slope_layer, hydro_layer, Resampling.bilinear)
+            hydro_layer = rasters.collocate(
+                slope_layer, hydro_layer, Resampling.bilinear
+            )
 
             # Calculate lsi
             lsi_tif = (
@@ -732,7 +753,9 @@ def lsi_core(input_dict: dict, ftep) -> None:
             vectors.write(lsi_vector, os.path.join(output_path, "LandslideRisk.shp"))
 
             # Write in memory
-            rasters.write(lsi_tif_sieved, os.path.join(output_path, "LandslideRisk.tif"))
+            rasters.write(
+                lsi_tif_sieved, os.path.join(output_path, "LandslideRisk.tif")
+            )
 
         LOGGER.info("-- Computing LSI statistics (FER_LR_av)")
 
@@ -742,12 +765,16 @@ def lsi_core(input_dict: dict, ftep) -> None:
         )
 
     except RasterioIOError as e:
-        LOGGER.error("Could not open or read the raster. Check if your data is available at your path or try relaunching RUSLE now or later")
+        LOGGER.error(
+            "Could not open or read the raster. Check if your data is available at your path or try relaunching RUSLE now or later"
+        )
         print(str(e))
         sys.exit(1)
 
     except DataSourceError as e:
-        LOGGER.error("Could not open or read the vector file. Check if your data is available at your path or try relaunching RUSLE now or later")
+        LOGGER.error(
+            "Could not open or read the vector file. Check if your data is available at your path or try relaunching RUSLE now or later"
+        )
         print(str(e))
         sys.exit(1)
 

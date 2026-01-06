@@ -1,7 +1,9 @@
 # Release History
 
-## 1.4.2 (2025-MM-DD)
+## 1.4.2 (2026-MM-DD)
 - CI: Use new groupware CI template for triggering sertit_atools update
+- CI: Add pre-commit bot
+- FIX: Float Nodata to Int for DEM at hydro layer
 
 ## 1.4.1 (2025-05-23)
 - ENH: Change the print errors to LOGGER errors to catch and explain the FTEP S3 reading errors

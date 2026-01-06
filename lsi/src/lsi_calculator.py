@@ -17,7 +17,7 @@ from pysheds.grid import Grid
 from rasterio.enums import Resampling
 from scipy.ndimage import distance_transform_edt
 from sertit import AnyPath, geometry, rasters, vectors
-from sertit.rasters import FLOAT_NODATA
+from sertit.rasters import FLOAT_NODATA, INT8_NODATA
 
 from lsi.src.reclass import classify_raster, reclass_landcover, reclass_landcover_elsus
 from lsi.src.utils import aspect, np_to_xr, xr_to_gdf
@@ -315,7 +315,7 @@ def hydro_raster_wbw(
 
         # When computing in the FTEP we use pysheds for fill_depressions to avoid panicking issue
         # identified here: gitlab.unistra.fr/sertit/arcgis-pro/lsi/-/issues/2
-        if ftep: 
+        if ftep:
             LOGGER.info("-- -- Preparing the DEM: Filling Pits")
             # -- Compute D8 flow directions
             grid = Grid.from_raster(dem_b_path)
@@ -342,7 +342,9 @@ def hydro_raster_wbw(
         else:
             LOGGER.info("-- -- Preparing the DEM: Filling Pits")
             # -- Fill pits
-            filled_pits = wbe.fill_pits(wbe.read_raster(os.path.join(tmp_dir, "dem_d.tif")))
+            filled_pits = wbe.fill_pits(
+                wbe.read_raster(os.path.join(tmp_dir, "dem_d.tif"))
+            )
 
             LOGGER.info("-- -- Preparing the DEM: Filling Depressions")
             # Write and read using WbW
@@ -374,6 +376,7 @@ def hydro_raster_wbw(
             compress="deflate",
             predictor=1,
             dtype=np.int16,
+            # nodata=INT8_NODATA,
         )
 
         flow_acc_thresh = wbe.read_raster(os.path.join(tmp_dir, "flow_acc_thresh.tif"))
@@ -385,19 +388,24 @@ def hydro_raster_wbw(
         wbe.write_vector(
             flowacc_thresh_lines, os.path.join(tmp_dir, "flowacc_thresh_lines.shp")
         )
+
         # Read with Sertit
         flowacc_thresh_lines = vectors.read(
             os.path.join(tmp_dir, "flowacc_thresh_lines.shp"), crs=proj_crs
         )
 
-        # Rasterization
+        # Fix CRS
         flowacc_thresh_lines = flowacc_thresh_lines.set_crs(proj_crs)
         flowacc_thresh_lines = flowacc_thresh_lines.to_crs(aoi.crs)
 
         # No value_field defined as it is already in binary
+        dem_b = dem_b.rio.write_nodata(INT8_NODATA)
         flowacc_thresh_lines = rasters.rasterize(
-            dem_b, flowacc_thresh_lines,
-        )       
+            dem_b,
+            flowacc_thresh_lines,
+            dtype=np.int16,
+            nodata=int(INT8_NODATA),
+        )
 
         rasters.write(
             flowacc_thresh_lines,

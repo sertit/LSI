@@ -20,9 +20,9 @@ from sertit.rasters import FLOAT_NODATA, INT8_NODATA
 
 from lsi.src.reclass import (
     classify_raster,
+    reclass_custom_lulc,
     reclass_landcover,
     reclass_landcover_elsus,
-    reclass_custom_lulc,
 )
 from lsi.src.utils import aspect, np_to_xr, xr_to_gdf
 
@@ -331,8 +331,12 @@ def hydro_raster_wbw(
             try:
                 from pysheds.grid import Grid
             except ImportError:
-                LOGGER.info("pysheds is not installed in the current environment. Please install it to compute the hydro layer.")
-                raise ImportError("pysheds is required but is not installed.")
+                LOGGER.info(
+                    "pysheds is not installed in the current environment. Please install it to compute the hydro layer."
+                )
+                raise ImportError(
+                    "pysheds is required but is not installed."
+                ) from ImportError
             LOGGER.info("-- -- Preparing the DEM: Filling Pits")
             # -- Compute D8 flow directions
             grid = Grid.from_raster(dem_b_path)

@@ -6,10 +6,10 @@
 
 from enum import unique
 
-import pandas as pd
 import numpy as np
 import xarray as xr
 from sertit.misc import ListEnum
+
 from lsi.src.utils import load_lulc_reclass_table
 
 

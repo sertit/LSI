@@ -258,6 +258,7 @@ def compute_statistics(gadm_layer, susceptibility_path, location):
 
     return lsi_stats
 
+
 def load_lulc_reclass_table(reclass_lulc_path: str) -> pd.DataFrame:
     """
     Load the custom LULC reclassification table from Excel.

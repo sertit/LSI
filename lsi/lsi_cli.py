@@ -51,7 +51,7 @@ import rich_click as click
             "ESA WorldCover - 2021 (10m)",
             "Corine Land Cover - 2018 (100m)",
             "Global Land Cover - Copernicus 2019 (100m)",
-            "Other"
+            "Other",
             # "ESRI Annual Land Cover 2021 (10m)",
         ]
     ),

@@ -51,11 +51,24 @@ import rich_click as click
             "ESA WorldCover - 2021 (10m)",
             "Corine Land Cover - 2018 (100m)",
             "Global Land Cover - Copernicus 2019 (100m)",
+            "Other"
             # "ESRI Annual Land Cover 2021 (10m)",
         ]
     ),
     default="ESA WorldCover - 2021 (10m)",
     show_default=True,
+)
+@click.option(
+    "-olulc",
+    "--other_lulc",
+    help="LULC path if lulc = Other",
+    type=click.Path(exists=True, resolve_path=True),
+)
+@click.option(
+    "-reclass",
+    "--reclass_lulc",
+    help="Path to an Excel with the reclassification of the other lulc to the EUROPE and GLOBAL standards",
+    type=click.Path(exists=True, resolve_path=True),
 )
 @click.option(
     "-eu_method",
@@ -112,6 +125,8 @@ def compute_lsi(  # noqa: E304
     dem_name,
     other_dem,
     landcover_name,
+    other_lulc,
+    reclass_lulc,
     europe_method,
     output_resolution,
     epsg_code,
@@ -140,6 +155,8 @@ def compute_lsi(  # noqa: E304
             InputParameters.DEM_NAME.value: dem_name,
             InputParameters.OTHER_DEM_PATH.value: other_dem,
             InputParameters.LANDCOVER_NAME.value: landcover_name,
+            InputParameters.OTHER_LULC_PATH.value: other_lulc,
+            InputParameters.RECLASS_LULC_PATH.value: reclass_lulc,
             InputParameters.EUROPE_METHOD.value: europe_method,
             InputParameters.OUTPUT_RESOLUTION.value: output_resolution,
             InputParameters.REF_EPSG.value: epsg_code,

@@ -124,6 +124,8 @@ class InputParameters(ListEnum):
     DEM_NAME = "dem_name"
     OTHER_DEM_PATH = "other_dem_path"
     LANDCOVER_NAME = "landcover_name"
+    OTHER_LULC_PATH = "other_lulc_path"
+    RECLASS_LULC_PATH = "reclass_lulc_path"
     EUROPE_METHOD = "europe_method"
     OUTPUT_RESOLUTION = "output_resolution"
     REF_EPSG = "ref_epsg"
@@ -186,10 +188,12 @@ def check_parameters(input_dict: dir) -> None:
 
     """
     # --- Extract parameters ---
-    location = input_dict.get(InputParameters.LOCATION)
+    location = input_dict.get(InputParameters.LOCATION.value)
     dem_name = input_dict.get(InputParameters.DEM_NAME.value)
     other_dem_path = input_dict.get(InputParameters.OTHER_DEM_PATH.value)
     landcover_name = input_dict.get(InputParameters.LANDCOVER_NAME.value)
+    other_lulc_path = input_dict.get(InputParameters.OTHER_LULC_PATH.value)
+    reclass_lulc_path = input_dict.get(InputParameters.RECLASS_LULC_PATH.value)
 
     # Check if other_dem_path is needed
     if (dem_name == DemType.OTHER.value) and (other_dem_path is None):
@@ -198,7 +202,15 @@ def check_parameters(input_dict: dir) -> None:
         landcover_name is LandcoverType.CLC.value
     ):
         raise ValueError(
-            f"{'Corine Land Cover can not be used for GLOBAL calculations, only in Europe !'}"
+            f"{'Corine Land Cover can not be used for GLOBAL calculations, only in Europe!'}"
+        )
+    # Check if other_lulc and reclass_lulc are provided when using a custom LULC
+    if (landcover_name == "Other") and (
+        (other_lulc_path is None) or (reclass_lulc_path is None)
+    ):
+        raise ValueError(
+            "When the chosen Landcover is 'Other', both 'other_lulc' (custom LULC raster) "
+            "and 'reclass_lulc' (Excel reclassification table) must be provided."
         )
     return
 
@@ -233,6 +245,8 @@ def lsi_core(input_dict: dict, ftep) -> None:
         dem_name = input_dict.get(InputParameters.DEM_NAME.value)
         other_dem_path = input_dict.get(InputParameters.OTHER_DEM_PATH.value)
         landcover_name = input_dict.get(InputParameters.LANDCOVER_NAME.value)
+        other_lulc_path = input_dict.get(InputParameters.OTHER_LULC_PATH.value)
+        reclass_lulc_path = input_dict.get(InputParameters.RECLASS_LULC_PATH.value)
         europe_method = input_dict.get(InputParameters.EUROPE_METHOD.value)
         output_resolution = input_dict.get(InputParameters.OUTPUT_RESOLUTION.value)
         epsg_code = input_dict.get(InputParameters.REF_EPSG.value)
@@ -425,6 +439,11 @@ def lsi_core(input_dict: dict, ftep) -> None:
                 )
                 # -- Define path for LULC
                 lulc_path = DataPath.GLC_PATH
+            elif landcover_name == "Other":
+                LOGGER.info(
+                    "-- LSI -- Method: Europe Refined layer based on custom Land Cover"
+                )
+                lulc_path = other_lulc_path
 
             # -- 0. DEM
             LOGGER.info("-- Crop DEM")
@@ -525,6 +544,8 @@ def lsi_core(input_dict: dict, ftep) -> None:
                     fw_dbf,
                     tmp_dir,
                     landcover_name,
+                    reclass_lulc_path,
+                    location,
                 )
                 landcover_list.append(landcover_dir)
 
@@ -597,7 +618,10 @@ def lsi_core(input_dict: dict, ftep) -> None:
                 LandcoverType.CLC.value: DataPath.CLC_PATH,
                 LandcoverType.GLC.value: DataPath.GLC_PATH,
             }
-            lulc_path = landcover_path_dict[landcover_name]
+            if landcover_name == "Other":
+                lulc_path = other_lulc_path
+            else:
+                lulc_path = landcover_path_dict[landcover_name]
 
             # 0. DEM
             LOGGER.info("-- DEM processing")
@@ -634,6 +658,8 @@ def lsi_core(input_dict: dict, ftep) -> None:
                 proj_crs,
                 output_resolution,
                 tmp_dir,
+                location,
+                reclass_lulc_path,
             )
             landuse_layer = rasters.crop(landuse_layer, aoi)
             landuse_layer = landuse_layer.rio.write_nodata(FLOAT_NODATA)

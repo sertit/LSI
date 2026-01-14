@@ -130,7 +130,15 @@ Usage: lsi.py [OPTIONS]
 |                                    Land Cover - 2018    WorldCover - 2021   |
 |                                    (100m)|Global Land   (10m)]              |
 |                                    Cover - Copernicus                       |
-|                                    2019 (100m)]                             |
+|                                    2019 (100m)|Other]                       |
+|    --other_lulc        -olulc      PATH                 LULC path if lulc = |
+|                                                         Other               |
+|    --reclass_lulc      -reclass    PATH                 Path to an Excel    |
+|                                                         with the            |
+|                                                         reclassification of |
+|                                                         the other lulc to   |
+|                                                         the EUROPE and      |
+|                                                         GLOBAL standards    |
 |    --europe_method     -eu_method  [Refined|Fast]       if LOCATION =       |
 |                                                         EUROPE, choose      |
 |                                                         whether you want a  |
@@ -142,10 +150,10 @@ Usage: lsi.py [OPTIONS]
 |                                                         refined LSI         |
 |                                                         computation         |
 |                                                         [default: Refined]  |
-|    --output_resolution  -res        INTEGER RANGE       Output resolution.  |
+|    --output_resoluti▒  -res        INTEGER RANGE        Output resolution.  |
 |                                    [1<=x<=1000]         Taking from DEM if  |
 |                                                         not provided        |
-|                                                         [default: 10;       |
+|                                                         [default: 30;       |
 |                                                         1<=x<=1000]         |
 |    --epsg_code         -epsg       INTEGER RANGE        EPSG code, 4326 is  |
 |                                    [1024<=x<=32767]     not accepted. By    |
@@ -175,20 +183,23 @@ Usage: lsi.py [OPTIONS]
 |                                                         an expensive        |
 |                                                         computation).       |
 |                                                         [default: True]     |
+|    --version                                            Show the version    |
+|                                                         and exit.           |
 |    --help              -h                               Show this message   |
 |                                                         and exit.           |
 +-----------------------------------------------------------------------------+
 ```
 
 
-Example for running the tool from the command line:
+**Example for running the tool from the command line:**
 
-Simplest scenario (the following line will provide a simple LSI raster with the GLOBAL method and the default DEM and LULC for the AOI provided, with 5-classes and the LSI shapefile)
+**Simplest scenario (the following line will provide a simple LSI raster with the GLOBAL method and the default DEM and LULC for the AOI provided, with 5-classes and the LSI shapefile)**
 
 ```shell
 python lsi.py -aoi "\\path\to\aoi_Bizou_Normandy.shp" -out "\\path\to\output_folder"
 ```
 
+**Scenarios to choose wether GLOBAL or EUROPE (the following line will provide a simple LSI raster with the GLOBAL method and the default DEM and LULC for the AOI provided, with 5-classes and the LSI shapefile)**
 
 Global
 
@@ -202,4 +213,20 @@ Europe
 python lsi.py -aoi "\\path\to\aoi_Souffelweyersheim_BashRhin.shp" -loc "Europe" -dem "COPDEM 30m" -lulc "Corine Land Cover - 2018 (100m)" -eu_method "Refined" -res 30 -out "\\path\to\output_folder" --temp False --jenks False
 ```
 
+**Scenario with optional LULC. :information_source: An excel file that includes the reclassification must also be provided following this format (An examole files is available at; To find a proper reclassification you can refer to [example_reclass_eu_global.xlsx](documentation/example_reclass_eu_global.xlsx)):**
+
+| LULC  | EUROPE | GLOBAL |
+|:-----:|:------:|:------:|
+|   2   |    3   |    3   |
+|  12   |    1   |    1   |
+|  16   |    1   |    1   |
+|  61   |    4   |    6   |
+
+Other columns can be added for personal reference, but only the columns LULC, EUROPE and GLOBAL will be read by the tool.
+
+To find a proper reclassification you can refer to [LSI_LULC-Conversion-Table.xlsx](documentation/LSI_LULC-Conversion-Table.xlsx) for guidance based on ESA WorldCover and Corine Landcoverhow to c
+
+```shell
+python lsi.py -aoi "\\path\to\aoi_venezia.shp" -loc "Global" -lulc "Other" -olulc "\\path\to\uso_del_suolo.tif" -reclass "\\path\to\reclass_to_global.xlsx"  -res 30 -out "\\path\to\output_folder" --jenks True
+```
 

@@ -257,3 +257,22 @@ def compute_statistics(gadm_layer, susceptibility_path, location):
     lsi_stats["LR_class"] = pd.DataFrame(lsi_class)
 
     return lsi_stats
+
+def load_lulc_reclass_table(reclass_lulc_path: str) -> pd.DataFrame:
+    """
+    Load the custom LULC reclassification table from Excel.
+
+    Expected columns:
+        - 'LULC': original raster values
+        - 'EUROPE': target class for European method
+        - 'GLOBAL': target class for Global method
+    """
+    df = pd.read_excel(reclass_lulc_path)
+    required_cols = {"LULC", "EUROPE", "GLOBAL"}
+    missing = required_cols.difference(df.columns)
+    if missing:
+        raise ValueError(
+            f"Missing required columns {missing} in custom LULC reclassification table "
+            f"'{reclass_lulc_path}'. Expected columns: {sorted(required_cols)}."
+        )
+    return df

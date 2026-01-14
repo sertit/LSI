@@ -224,7 +224,7 @@ python lsi.py -aoi "\\path\to\aoi_Souffelweyersheim_BashRhin.shp" -loc "Europe" 
 
 Other columns can be added for personal reference, but only the columns LULC, EUROPE and GLOBAL will be read by the tool.
 
-To find a proper reclassification you can refer to [LSI_LULC-Conversion-Table.xlsx](documentation/LSI_LULC-Conversion-Table.xlsx) for guidance based on ESA WorldCover and Corine Landcoverhow to c
+To find a proper reclassification you can refer to [LSI_LULC-Conversion-Table.xlsx](documentation/LSI_LULC-Conversion-Table.xlsx) for guidance based on ESA WorldCover and Corine Landcover.
 
 ```shell
 python lsi.py -aoi "\\path\to\aoi_venezia.shp" -loc "Global" -lulc "Other" -olulc "\\path\to\uso_del_suolo.tif" -reclass "\\path\to\reclass_to_global.xlsx"  -res 30 -out "\\path\to\output_folder" --jenks True

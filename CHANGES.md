@@ -4,6 +4,8 @@
 - CI: Use new groupware CI template for triggering sertit_atools update
 - CI: Add pre-commit bot
 - FIX: Float Nodata to Int for DEM at hydro layer
+- FIX: Add option to import pysheds only when using FTEP option
+- ENH: Add new inputs (other lulc and reclass lulc reference file) for cases when an optional lulc is provided by the user for the landcover layer computation
 
 ## 1.4.1 (2025-05-23)
 - ENH: Change the print errors to LOGGER errors to catch and explain the FTEP S3 reading errors

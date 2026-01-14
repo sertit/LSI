@@ -6,9 +6,11 @@
 
 from enum import unique
 
+import pandas as pd
 import numpy as np
 import xarray as xr
 from sertit.misc import ListEnum
+from lsi.src.utils import load_lulc_reclass_table
 
 
 @unique
@@ -21,6 +23,39 @@ class LandcoverType(ListEnum):
     ESAWC = "ESA WorldCover - 2021 (10m)"
     GLC = "Global Land Cover - Copernicus 2019 (100m)"
     ELC = "ESRI Annual Land Cover 2021 (10m)"
+
+
+def reclass_custom_lulc(landcover, reclass_lulc_path: str, location: str):
+    """
+    Reclassify a custom LULC raster using an external Excel table.
+
+    The Excel table must contain columns 'LULC', 'EUROPE', 'GLOBAL'. The
+    'location' argument (\"Europe\" or \"Global\") selects which target column
+    to use.
+    """
+    df = load_lulc_reclass_table(reclass_lulc_path)
+
+    if location == "Europe":
+        target_col = "EUROPE"
+    elif location == "Global":
+        target_col = "GLOBAL"
+    else:
+        raise ValueError(
+            f"Unsupported location '{location}' for custom LULC reclassification. "
+            "Expected 'Europe' or 'Global'."
+        )
+
+    mapping = dict(zip(df["LULC"], df[target_col]))
+
+    landcover_reclass = xr.apply_ufunc(
+        lambda x: mapping.get(x, x),
+        landcover,
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=[landcover.dtype],
+    )
+
+    return landcover_reclass
 
 
 def classify_raster(raster, raster_steps, raster_classes):

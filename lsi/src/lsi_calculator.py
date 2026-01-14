@@ -13,13 +13,17 @@ import numpy as np
 import rasterio as rio
 import whitebox_workflows as wbw
 import xarray as xr
-from pysheds.grid import Grid
 from rasterio.enums import Resampling
 from scipy.ndimage import distance_transform_edt
 from sertit import AnyPath, geometry, rasters, vectors
 from sertit.rasters import FLOAT_NODATA, INT8_NODATA
 
-from lsi.src.reclass import classify_raster, reclass_landcover, reclass_landcover_elsus
+from lsi.src.reclass import (
+    classify_raster,
+    reclass_landcover,
+    reclass_landcover_elsus,
+    reclass_custom_lulc,
+)
 from lsi.src.utils import aspect, np_to_xr, xr_to_gdf
 
 LOGGING_FORMAT = "%(asctime)s - [%(levelname)s] - %(message)s"
@@ -166,13 +170,21 @@ def landcover_raster(
     proj_crs,
     output_resolution,
     output_path,
+    location=None,
+    reclass_lulc_path=None,
 ):
     """ """
     LOGGER.info("-- Produce the Land use raster for the LSI model")
 
     if not os.path.exists(os.path.join(output_path, "landcover_weight.tif")):
         # Reclassification of LULC for LSI calculation
-        landcover_reclass = reclass_landcover(lulc, landcover_name)
+        if (landcover_name == "Other") and reclass_lulc_path and location:
+            # Use external Excel table for custom LULC
+            landcover_reclass = reclass_custom_lulc(
+                lulc, reclass_lulc_path=reclass_lulc_path, location=location
+            )
+        else:
+            landcover_reclass = reclass_landcover(lulc, landcover_name)
         landcover_reclass = landcover_reclass.rio.write_crs(lulc.rio.crs, inplace=True)
 
         def landuse_transform(x):
@@ -316,6 +328,11 @@ def hydro_raster_wbw(
         # When computing in the FTEP we use pysheds for fill_depressions to avoid panicking issue
         # identified here: gitlab.unistra.fr/sertit/arcgis-pro/lsi/-/issues/2
         if ftep:
+            try:
+                from pysheds.grid import Grid
+            except ImportError:
+                LOGGER.info("pysheds is not installed in the current environment. Please install it to compute the hydro layer.")
+                raise ImportError("pysheds is required but is not installed.")
             LOGGER.info("-- -- Preparing the DEM: Filling Pits")
             # -- Compute D8 flow directions
             grid = Grid.from_raster(dem_b_path)
@@ -579,6 +596,8 @@ def landcover_raster_eu(
     final_weight_dbf,
     tmp_dir,
     landcover_name,
+    reclass_lulc_path=None,
+    location=None,
 ):
     """
     This function process the landcover to produce tha raster of weights for landcover according to ELSUS.
@@ -608,11 +627,16 @@ def landcover_raster_eu(
     except ValueError:
         raise ValueError("Your AOI doesn't cover your Landcover layer.") from ValueError
 
-    # Reclassification based on ELSUS
+    # Reclassification based on ELSUS or custom table
     landcover = rasters.collocate(
         reference_raster, landcover.astype(np.float32), Resampling.nearest
     )
-    landcover_reclass = reclass_landcover_elsus(landcover, proj_crs, landcover_name)
+    if (landcover_name == "Other") and reclass_lulc_path and location:
+        landcover_reclass = reclass_custom_lulc(
+            landcover, reclass_lulc_path=reclass_lulc_path, location=location
+        )
+    else:
+        landcover_reclass = reclass_landcover_elsus(landcover, proj_crs, landcover_name)
     landcover_reclass = rasters.crop(landcover_reclass, aoi_m)
 
     # JOIN with LULC_dbf

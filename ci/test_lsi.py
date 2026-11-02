@@ -26,6 +26,7 @@ ci.reduce_verbosity()
 # def set_env():
 # os.environ["NUMBA_DEBUG"] = "0"
 
+
 def get_ci_path() -> AnyPathType:
     """
     Get the path to the CI folder.
